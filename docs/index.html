@@ -16,93 +16,102 @@
   <style>
     body {
       background-color: #f8f9fa;
+      padding: 20px;
+      font-family: Arial, sans-serif;
     }
-    h1 {
-      font-weight: 700;
-    }
-    table th {
-      cursor: pointer;
-    }
+    h1 { font-weight: 700; margin-bottom: 30px; }
+    table th { cursor: pointer; }
+    #radar { margin-top: 40px; height: 480px; }
   </style>
 </head>
 
-<body class="container py-4">
+<body class="container">
 
-  <h1 class="mb-4">TMMLU+ Leaderboard</h1>
+  <h1>TMMLU+ Leaderboard</h1>
 
-  <div class="table-responsive">
+  <!-- Leaderboard Table -->
+  <div class="table-responsive mb-5">
     <table id="leaderboard" class="table table-striped table-bordered">
       <thead class="table-dark">
         <tr>
           <th>Rank</th>
           <th>Model</th>
-          <th>Average</th>
-          <th>STEM</th>
-          <th>Humanities</th>
-          <th>Social Science</th>
-          <th>Other</th>
+          <th>Overall</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </div>
 
-  <div id="radar" style="height: 450px;"></div>
+  <!-- Radar Chart -->
+  <div id="radar"></div>
 
   <script>
     async function loadLeaderboard() {
-      // ✅ RELATIVE PATH (works on GitHub Pages)
       const response = await fetch("./leaderboard.json");
-      const data = await response.json();
+      const json = await response.json();
+
+      const leaderboard = json.leaderboard;
+      const details = json.details;
+
+      // Sort by overall descending
+      leaderboard.sort((a,b) => b.overall - a.overall);
 
       const tbody = document.querySelector("#leaderboard tbody");
       tbody.innerHTML = "";
 
-      data.forEach((row, idx) => {
+      leaderboard.forEach((row,index)=>{
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${idx + 1}</td>
+          <td>${index+1}</td>
           <td>${row.model}</td>
-          <td>${row.average.toFixed(2)}</td>
-          <td>${row.stem.toFixed(2)}</td>
-          <td>${row.humanities.toFixed(2)}</td>
-          <td>${row.social_science.toFixed(2)}</td>
-          <td>${row.other.toFixed(2)}</td>
+          <td>${row.overall.toFixed(4)}</td>
         `;
+
+        // Click row → update radar
+        tr.addEventListener("click", ()=>{
+          drawRadar(row.model, details[row.model]);
+        });
+
         tbody.appendChild(tr);
       });
 
-      drawRadar(data[0]);
+      // Draw radar for top model by default
+      drawRadar(leaderboard[0].model, details[leaderboard[0].model]);
     }
 
-    function drawRadar(row) {
+    function drawRadar(modelName, modelDetails){
+      if(!modelDetails || !modelDetails.general){
+        document.getElementById("radar").innerHTML =
+          "<p class='text-danger'>No detailed data available.</p>";
+        return;
+      }
+
+      const general = modelDetails.general;
+      const labels = Object.keys(general);
+      const values = Object.values(general);
+
       const trace = {
         type: "scatterpolar",
-        r: [
-          row.stem,
-          row.humanities,
-          row.social_science,
-          row.other,
-          row.stem
-        ],
-        theta: [
-          "STEM",
-          "Humanities",
-          "Social Science",
-          "Other",
-          "STEM"
-        ],
-        fill: "toself"
+        r: [...values, values[0]],
+        theta: [...labels, labels[0]],
+        fill: "toself",
+        name: modelName
       };
 
-      Plotly.newPlot("radar", [trace], {
-        polar: { radialaxis: { visible: true, range: [0, 100] } },
-        showlegend: false,
-        title: row.model
-      });
+      const layout = {
+        title: modelName,
+        polar: {
+          radialaxis: { visible:true, range:[0,1] }
+        },
+        showlegend:false
+      };
+
+      Plotly.newPlot("radar",[trace],layout);
     }
 
     loadLeaderboard();
   </script>
+
 </body>
 </html>
