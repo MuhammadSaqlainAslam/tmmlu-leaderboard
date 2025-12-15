@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TMMLU+ Leaderboard</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<style>
+body { font-family: Arial, sans-serif; background:#f8f9fa; padding:40px; }
+h1 { text-align:center; color:#0d6efd; margin-bottom:40px; }
+.card { margin-bottom:15px; border-radius:10px; }
+.card-header { background:#0d6efd; color:white; cursor:pointer; }
+.model-row { display:grid; grid-template-columns:2fr 1fr 1fr; text-align:center; }
+</style>
+</head>
+
+<body>
+
+<h1>📊 TMMLU+ Leaderboard</h1>
+
+<div class="model-row fw-bold mb-2">
+  <div>Model</div>
+  <div>Overall</div>
+  <div>TMMLU+ Overall</div>
+</div>
+
+<div class="accordion" id="accordion"></div>
+
+<div class="mt-5">
+  <h3 class="text-center">TMMLU+ Category Comparison</h3>
+  <div id="radar"></div>
+</div>
+
+<script>
+async function loadData() {
+    const res = await fetch("leaderboard.json");
+    const data = await res.json();
+
+    const acc = document.getElementById("accordion");
+
+    data.leaderboard.forEach((m, i) => {
+        const d = data.details[m.model];
+        const id = `m${i}`;
+
+        acc.innerHTML += `
+        <div class="card">
+          <div class="card-header model-row" data-bs-toggle="collapse" data-bs-target="#${id}">
+            <div>${m.model}</div>
+            <div>${m.overall}</div>
+            <div>${m.tmmlu_overall ?? "-"}</div>
+          </div>
+          <div id="${id}" class="collapse">
+            <div class="card-body">
+              <pre>${JSON.stringify(d, null, 2)}</pre>
+            </div>
+          </div>
+        </div>`;
+    });
+
+    drawRadar(data);
+}
+
+function drawRadar(data) {
+    if (!data.leaderboard.length) return;
+
+    const cats = Object.keys(
+        data.details[data.leaderboard[0].model].tmmlu
+    );
+
+    const traces = data.leaderboard.map(m => {
+        const vals = cats.map(c => {
+            const v = Object.values(data.details[m.model].tmmlu[c]);
+            return v.reduce((a,b)=>a+b,0) / v.length;
+        });
+        return {
+            type: 'scatterpolar',
+            r: [...vals, vals[0]],
+            theta: [...cats, cats[0]],
+            fill: 'toself',
+            name: m.model
+        };
+    });
+
+    Plotly.newPlot("radar", traces, {
+        polar: { radialaxis: { range: [0,1] } }
+    });
+}
+
+loadData();
+</script>
+
+</body>
+</html>
