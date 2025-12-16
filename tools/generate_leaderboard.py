@@ -2,7 +2,7 @@ import pandas as pd
 import json
 import os
 
-CSV_PATH = "benchmark.csv"
+CSV_PATH = "results/benchmark.csv"
 OUT_PATH = "docs/leaderboard.json"
 
 TMMLU_CATEGORY_MAP = {
