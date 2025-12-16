@@ -1,101 +1,105 @@
-import pandas as pd
+import csv
 import json
 import os
+import math
+from collections import defaultdict
 
-CSV_PATH = "results/benchmark.csv"
-OUT_PATH = "docs/leaderboard.json"
+ROOT = os.path.dirname(os.path.dirname(__file__))
+CSV_PATH = os.path.join(ROOT, "benchmark.csv")
+OUT_PATH = os.path.join(ROOT, "docs", "leaderboard.json")
 
-TMMLU_CATEGORY_MAP = {
-    "physics": "Science",
-    "secondary_physics": "Science",
-    "engineering_math": "Science",
-    "statistics_and_machine_learning": "Science",
-    "advance_chemistry": "Science",
-    "organic_chemistry": "Science",
-    "fire_science": "Science",
-    "junior_science_exam": "Science",
-    "junior_chemistry": "Science",
+def safe_avg(values):
+    vals = [v for v in values if isinstance(v, (int, float)) and not math.isnan(v)]
+    return round(sum(vals) / len(vals), 4) if vals else 0.0
 
-    "auditing": "Business",
-    "business_management": "Business",
-    "finance_banking": "Business",
-    "financial_analysis": "Business",
-    "insurance_studies": "Business",
-    "management_accounting": "Business",
-    "marketing_management": "Business",
-    "taxation": "Business",
-    "economics": "Business",
-    "accounting": "Business",
-    "trade": "Business",
-    "real_estate": "Business",
+models = []
+tmmlu = defaultdict(lambda: defaultdict(dict))
+general = defaultdict(dict)
 
-    "basic_medical_science": "Health & Medicine",
-    "clinical_psychology": "Health & Medicine",
-    "dentistry": "Health & Medicine",
-    "pharmacology": "Health & Medicine",
-    "pharmacy": "Health & Medicine",
-    "veterinary_pharmacology": "Health & Medicine",
+with open(CSV_PATH, newline="", encoding="utf-8") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        task = row["task_name"]
+        metric = row["metric"]
 
-    "computer_science": "Tech & Engineering",
-    "mechanical": "Tech & Engineering",
-    "technical": "Tech & Engineering",
-}
+        if metric != "accuracy":
+            continue
 
-df = pd.read_csv(CSV_PATH)
-models = [c for c in df.columns if c not in ["task_name", "metric"]]
+        for model, val in row.items():
+            if model in ("task_name", "metric"):
+                continue
+            if model not in models:
+                models.append(model)
 
-result = {"leaderboard": [], "details": {}}
+            try:
+                score = float(val)
+            except:
+                score = None
+
+            if task.startswith("TCEval-v2/tmmluplus-"):
+                sub = task.replace("TCEval-v2/tmmluplus-", "")
+                tmmlu[sub][model] = score
+            else:
+                general[task][model] = score
+
+# ---- GROUP TMMLU+ INTO CATEGORIES (SIMPLE & SAFE) ----
+def infer_category(sub):
+    key = sub.lower()
+    if "law" in key or "politic" in key:
+        return "law & politics"
+    if "medicine" in key or "medical" in key or "pharma" in key:
+        return "medicine"
+    if "chemistry" in key or "physics" in key:
+        return "science"
+    if "math" in key or "statistics" in key:
+        return "mathematics"
+    if "engineering" in key or "mechanical" in key:
+        return "engineering"
+    if "economics" in key or "finance" in key or "accounting" in key:
+        return "economics"
+    if "education" in key:
+        return "education"
+    return "others"
+
+categories = defaultdict(lambda: defaultdict(dict))
+for sub, scores in tmmlu.items():
+    cat = infer_category(sub)
+    categories[cat][sub] = scores
+
+# ---- BUILD FINAL JSON ----
+leaderboard = {"models": []}
 
 for model in models:
-    details = {
-        "tmmlu": {},
-        "general": {}
-    }
+    cat_avgs = {}
+    for cat, subs in categories.items():
+        scores = []
+        for s in subs.values():
+            if model in s and s[model] is not None:
+                scores.append(s[model])
+        cat_avgs[cat] = safe_avg(scores)
 
-    # ---------- TMMLU+ ----------
-    tmmlu_rows = df[
-        df.task_name.str.contains("tmmluplus") &
-        (df.metric == "accuracy")
+    tmmlu_all = []
+    for subs in categories.values():
+        for s in subs.values():
+            if model in s and s[model] is not None:
+                tmmlu_all.append(s[model])
+
+    gen_scores = [
+        v for v in general.values()
+        if model in v and v[model] is not None
+        for v in [v]
     ]
 
-    for _, r in tmmlu_rows.iterrows():
-        task = r.task_name.split("tmmluplus-")[-1]
-        category = TMMLU_CATEGORY_MAP.get(task, "Other")
-
-        details["tmmlu"].setdefault(category, {})
-        details["tmmlu"][category].setdefault(task, {})
-        details["tmmlu"][category][task][task] = float(r[model])
-
-    # ---------- GENERAL ----------
-    gen_rows = df[
-        ~df.task_name.str.contains("tmmluplus") &
-        (df.metric == "accuracy")
-    ]
-
-    for _, r in gen_rows.iterrows():
-        details["general"][r.task_name] = float(r[model])
-
-    # ---------- AVERAGES ----------
-    tmmlu_scores = []
-    for cat in details["tmmlu"].values():
-        for sub in cat.values():
-            tmmlu_scores.extend(sub.values())
-
-    tmmlu_avg = sum(tmmlu_scores) / len(tmmlu_scores) if tmmlu_scores else 0
-    gen_avg = sum(details["general"].values()) / len(details["general"]) if details["general"] else 0
-
-    result["leaderboard"].append({
-        "model": model,
-        "overall": round(gen_avg, 4),
-        "tmmlu_overall": round(tmmlu_avg, 4)
+    leaderboard["models"].append({
+        "name": model,
+        "tmmlu_avg": safe_avg(tmmlu_all),
+        "general_avg": safe_avg(gen_scores),
+        "tmmlu_categories": cat_avgs,
+        "tmmlu_details": categories
     })
 
-    result["details"][model] = details
-
-result["leaderboard"].sort(key=lambda x: x["overall"], reverse=True)
-
-os.makedirs("docs", exist_ok=True)
-with open(OUT_PATH, "w") as f:
-    json.dump(result, f, indent=2)
+os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
+with open(OUT_PATH, "w", encoding="utf-8") as f:
+    json.dump(leaderboard, f, indent=2)
 
 print("✅ leaderboard.json generated successfully")
