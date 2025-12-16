@@ -1,77 +1,295 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>TMMLU+ Leaderboard</title>
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-<style>
-body { font-family: Arial; margin: 20px; }
-details { margin-left: 20px; }
-.model { border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; }
-</style>
+    <meta charset="UTF-8" />
+    <title>TMMLU+ Leaderboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background: #fafafa;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        h2 {
+            margin-top: 40px;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 5px;
+        }
+
+        /* Leaderboard Table Styles */
+        #leaderboard-table {
+            border-collapse: collapse;
+            width: 80%; /* Adjusted width */
+            margin: 20px auto 40px auto; /* Centered with margin */
+            background: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Subtle shadow */
+            border-radius: 8px;
+        }
+
+        #leaderboard-table th, #leaderboard-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+
+        #leaderboard-table th {
+            background: #e9e9e9;
+            font-weight: bold;
+        }
+
+        #leaderboard-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        /* Chart Container Styles */
+        .chart-container {
+            width: 90%;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+
+        /* Accordion Styles */
+        #tmmlu-accordion {
+            width: 80%;
+            margin: 20px auto;
+        }
+
+        #tmmlu-accordion details {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        
+        #tmmlu-accordion summary {
+            font-weight: bold;
+            cursor: pointer;
+            padding: 10px;
+            background-color: #f7f7f7;
+            border-radius: 6px;
+        }
+        
+        #tmmlu-accordion details[open] summary {
+            border-bottom: 1px solid #ddd;
+        }
+
+        .sub {
+            padding: 10px 0 5px 20px;
+            border-left: 3px solid #007bff; /* Highlight for sub-disciplines */
+            margin: 10px 0 5px 10px;
+            background-color: #fcfdff;
+        }
+        
+        .sub ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin-top: 5px;
+        }
+        
+        .sub li {
+            padding: 3px 0;
+            font-size: 0.9em;
+        }
+    </style>
 </head>
 
 <body>
-<h1>TMMLU+ Leaderboard</h1>
-<div id="radar"></div>
-<div id="models"></div>
+    <h1>TMMLU+ Leaderboard</h1>
 
-<script>
-fetch("./leaderboard.json")
-.then(r => r.json())
-.then(data => {
+    <h2>📊 Model Rankings</h2>
+    <table id="leaderboard-table">
+        </table>
 
-  const cats = Object.keys(data.models[0].tmmlu_categories)
+    <h2>🌐 TMMLU+ Category Radar</h2>
+    <div class="chart-container" id="tmmlu-radar">
+        </div>
 
-  const traces = data.models.map(m => ({
-    type: "scatterpolar",
-    r: cats.map(c => m.tmmlu_categories[c]),
-    theta: cats,
-    fill: "toself",
-    name: m.name
-  }))
+    <h2>📈 TMMLU+ Category Bar Chart</h2>
+    <div class="chart-container" id="tmmlu-bar">
+        </div>
+    
+    <h2>📑 TMMLU+ Discipline Radar Breakdown</h2>
+    <div id="tmmlu-accordion">
+        </div>
 
-  Plotly.newPlot("radar", traces, {
-    polar: { radialaxis: { visible: true, range: [0,1] } },
-    title: "TMMLU+ Category Averages"
-  })
 
-  const root = document.getElementById("models")
+    <script>
+        // Data URL should point to the data.json file in the same directory
+        const DATA_URL = "data.json"; 
 
-  data.models.forEach(m => {
-    const div = document.createElement("div")
-    div.className = "model"
+        fetch(DATA_URL)
+            .then(r => {
+                if (!r.ok) {
+                    throw new Error(`HTTP error! status: ${r.status}`);
+                }
+                return r.json();
+            })
+            .then(data => {
+                // Ensure the data structure is the model-centric one
+                renderTable(data);
+                renderRadar(data);
+                renderBar(data);
+                renderAccordion(data);
+            })
+            .catch(err => {
+                console.error("Error fetching or processing data:", err);
+                // Display error message prominently on failure
+                document.body.insertAdjacentHTML(
+                    "afterbegin",
+                    "<p style='color:red; text-align:center;'>⚠️ Error loading leaderboard data. Check console for details.</p>"
+                );
+            });
 
-    div.innerHTML = `
-      <h2>${m.name}</h2>
-      <p><b>TMMLU+ Avg:</b> ${m.tmmlu_avg}</p>
-      <p><b>General Avg:</b> ${m.general_avg}</p>
-    `
+        /* ================= TABLE ================= */
 
-    for (const [cat, subs] of Object.entries(m.tmmlu_details)) {
-      const d1 = document.createElement("details")
-      d1.innerHTML = `<summary>${cat}</summary>`
+        function renderTable(data) {
+            const table = document.getElementById("leaderboard-table");
+            // Get model names, sort them by tmmlu_avg (descending for ranking)
+            const models = Object.keys(data)
+                .sort((a, b) => data[b].tmmlu_avg - data[a].tmmlu_avg);
 
-      for (const [sub, scores] of Object.entries(subs)) {
-        const d2 = document.createElement("details")
-        d2.innerHTML = `<summary>${sub}</summary>`
+            let html = "<tr><th>Rank</th><th>Model</th><th>TMMLU+ Avg (%)</th><th>General Avg (%)</th></tr>";
+            
+            models.forEach((m, index) => {
+                // Format scores as percentages, rounded to 2 decimal places
+                const tmmluAvg = (data[m].tmmlu_avg * 100).toFixed(2);
+                const generalAvg = (data[m].general_avg * 100).toFixed(2);
+                
+                html += `
+                    <tr>
+                        <td><b>#${index + 1}</b></td>
+                        <td>${m}</td>
+                        <td>${tmmluAvg}</td>
+                        <td>${generalAvg}</td>
+                    </tr>`;
+            });
 
-        const p = document.createElement("p")
-        p.textContent = scores[m.name] ?? "N/A"
-        d2.appendChild(p)
+            table.innerHTML = html;
+        }
 
-        d1.appendChild(d2)
-      }
-      div.appendChild(d1)
-    }
+        /* ================= RADAR ================= */
 
-    root.appendChild(div)
-  })
-})
-.catch(err => {
-  document.body.innerHTML = "⚠️ Error loading leaderboard data"
-  console.error(err)
-})
-</script>
+        function renderRadar(data) {
+            const models = Object.keys(data);
+            
+            // Get categories from the first model, assumes all models have the same categories
+            const categories = Object.keys(data[models[0]].tmmlu_categories); 
+
+            const traces = models.map(m => ({
+                type: "scatterpolar",
+                // Multiply by 100 for percentages, matching range [0, 100]
+                r: categories.map(c => data[m].tmmlu_categories[c] * 100), 
+                theta: categories,
+                fill: "toself",
+                name: m
+            }));
+
+            const layout = {
+                polar: { 
+                    radialaxis: { 
+                        visible: true, 
+                        range: [0, 100], // Set range from 0 to 100 for percentages
+                        title: { text: "Accuracy (%)" }
+                    } 
+                },
+                title: "TMMLU+ Category Averages (Radar Plot)",
+                showlegend: true,
+                margin: { t: 40, b: 40, l: 60, r: 60 }
+            };
+
+            Plotly.newPlot("tmmlu-radar", traces, layout);
+        }
+
+        /* ================= BAR CHART ================= */
+
+        function renderBar(data) {
+            const models = Object.keys(data);
+            const categories = Object.keys(data[models[0]].tmmlu_categories);
+            
+            // Create a sorted list of categories based on the average score of all models 
+            const categoryAverages = categories.map(cat => {
+                const totalScore = models.reduce((sum, m) => sum + data[m].tmmlu_categories[cat], 0);
+                return { name: cat, avg: totalScore / models.length };
+            }).sort((a, b) => b.avg - a.avg); // Sort descending
+
+            const sortedCategories = categoryAverages.map(c => c.name);
+
+            const traces = models.map(m => ({
+                x: sortedCategories,
+                // Get the data for the sorted categories
+                y: sortedCategories.map(c => data[m].tmmlu_categories[c] * 100), 
+                type: "bar",
+                name: m
+            }));
+
+            const layout = {
+                barmode: "group",
+                title: "TMMLU+ Category Averages (Bar Chart)",
+                xaxis: { title: "Category", tickangle: -45 },
+                yaxis: { title: "Accuracy (%)", range: [0, 100] },
+                margin: { t: 40, b: 120, l: 60, r: 20 } // Increase bottom margin for angled labels
+            };
+
+            Plotly.newPlot("tmmlu-bar", traces, layout);
+        }
+
+        /* ================= ACCORDION (Discipline Breakdown) ================= */
+
+        function renderAccordion(data) {
+            const container = document.getElementById("tmmlu-accordion");
+            const models = Object.keys(data);
+
+            // Get the list of all major categories (e.g., 'others', 'science') from the first model
+            const categories = Object.keys(data[models[0]].tmmlu_categories);
+
+            // The 'tmmlu_breakdown' holds the sub-discipline scores
+            const breakdownData = data[models[0]].tmmlu_breakdown; 
+
+            // Loop through each major category (e.g., 'others', 'science', 'medicine')
+            categories.forEach(cat => {
+                // Get the sub-disciplines for the current category from the breakdown data
+                const subs = breakdownData[cat]; 
+                if (!subs) return; // Skip if no breakdown data for this category
+
+                let catHtml = `<details><summary><b>${cat.toUpperCase()}</b></summary>`;
+
+                // Get a list of sub-disciplines and sort them by average score (descending)
+                const subDisciplines = Object.keys(subs).map(sub => {
+                    const totalScore = models.reduce((sum, m) => sum + data[m].tmmlu_breakdown[cat][sub], 0);
+                    return { name: sub, avg: totalScore / models.length };
+                }).sort((a, b) => b.avg - a.avg); 
+
+                subDisciplines.forEach(subItem => {
+                    const sub = subItem.name;
+                    catHtml += `<div class="sub"><b>${sub}</b><ul>`;
+                    
+                    // Collect all model scores for this sub-discipline and sort them
+                    const scores = models.map(m => ({
+                        name: m,
+                        score: data[m].tmmlu_breakdown[cat][sub] // Score for this model/sub
+                    })).sort((a, b) => b.score - a.score); // Sort models by score (descending)
+
+                    // Render the sorted list of models and scores
+                    scores.forEach(s => {
+                        const val = s.score;
+                        catHtml += `<li>${s.name}: ${(val * 100).toFixed(2)}%</li>`;
+                    });
+
+                    catHtml += "</ul></div>";
+                });
+
+                catHtml += "</details>";
+                container.innerHTML += catHtml;
+            });
+        }
+    </script>
 </body>
 </html>
