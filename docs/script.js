@@ -1,71 +1,101 @@
-// Fetch leaderboard JSON
-fetch("leaderboard.json")
-  .then(response => response.json())
+const DATA_URL = "leaderboard.json";
+
+fetch(DATA_URL)
+  .then(r => r.json())
   .then(data => {
-    renderAvgPlot(data.models);
-    renderRadarPlot(data.models);
-    renderBarPlot(data.models);
+    renderTable(data);
+    renderRadar(data);
+    renderBar(data);
+    renderAccordion(data);
   })
-  .catch(error => {
-    console.error("Error loading leaderboard data:", error);
-    document.body.innerHTML += '<p style="color:red;">⚠️ Error loading leaderboard data.</p>';
+  .catch(err => {
+    console.error(err);
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      "<p style='color:red'>⚠️ Error loading leaderboard data.</p>"
+    );
   });
 
-// Average TMMLU+ performance plot
-function renderAvgPlot(models) {
-  const names = models.map(m => m.name);
-  const scores = models.map(m => m.tmmlu_avg);
+/* ================= TABLE ================= */
 
-  const trace = {
-    x: names,
-    y: scores,
-    type: 'bar',
-    marker: { color: '#1f77b4' }
-  };
+function renderTable(data) {
+  const table = document.getElementById("leaderboard-table");
+  const models = Object.keys(data);
 
-  const layout = {
-    yaxis: { title: 'TMMLU+ Average Score', range: [0,1] },
-    margin: { t:30, l:50, r:30, b:50 }
-  };
+  let html = "<tr><th>Model</th><th>TMMLU+ Avg</th><th>Overall</th></tr>";
+  models.forEach(m => {
+    html += `
+      <tr>
+        <td>${m}</td>
+        <td>${(data[m].tmmlu_avg * 100).toFixed(2)}</td>
+        <td>${(data[m].overall * 100).toFixed(2)}</td>
+      </tr>`;
+  });
 
-  Plotly.newPlot('avg-plot', [trace], layout);
+  table.innerHTML = html;
 }
 
-// Radar chart for categories
-function renderRadarPlot(models) {
-  const categories = Object.keys(models[0].tmmlu_categories);
+/* ================= RADAR ================= */
+
+function renderRadar(data) {
+  const models = Object.keys(data);
+  const categories = Object.keys(data[models[0]].tmmlu_categories);
+
   const traces = models.map(m => ({
-    type: 'scatterpolar',
-    r: categories.map(c => m.tmmlu_categories[c]),
+    type: "scatterpolar",
+    r: categories.map(c => data[m].tmmlu_categories[c] * 100),
     theta: categories,
-    fill: 'toself',
-    name: m.name
+    fill: "toself",
+    name: m
   }));
 
-  const layout = {
-    polar: { radialaxis: { visible: true, range: [0,1] } },
+  Plotly.newPlot("tmmlu-radar", traces, {
+    polar: { radialaxis: { visible: true, range: [0, 100] } },
     showlegend: true,
-    margin: { t:30, l:50, r:50, b:50 }
-  };
-
-  Plotly.newPlot('category-radar', traces, layout);
+    margin: { t: 40 }
+  });
 }
 
-// Bar chart for categories
-function renderBarPlot(models) {
-  const categories = Object.keys(models[0].tmmlu_categories);
+/* ================= BAR CHART ================= */
+
+function renderBar(data) {
+  const models = Object.keys(data);
+  const categories = Object.keys(data[models[0]].tmmlu_categories);
+
   const traces = models.map(m => ({
     x: categories,
-    y: categories.map(c => m.tmmlu_categories[c]),
-    type: 'bar',
-    name: m.name
+    y: categories.map(c => data[m].tmmlu_categories[c] * 100),
+    type: "bar",
+    name: m
   }));
 
-  const layout = {
-    barmode: 'group',
-    yaxis: { title: 'Score', range: [0,1] },
-    margin: { t:30, l:50, r:30, b:50 }
-  };
+  Plotly.newPlot("tmmlu-bar", traces, {
+    barmode: "group",
+    yaxis: { title: "Accuracy (%)" },
+    margin: { t: 40 }
+  });
+}
 
-  Plotly.newPlot('category-bar', traces, layout);
+/* ================= ACCORDION ================= */
+
+function renderAccordion(data) {
+  const container = document.getElementById("tmmlu-accordion");
+  const models = Object.keys(data);
+  const cats = data[models[0]].tmmlu_breakdown;
+
+  Object.entries(cats).forEach(([cat, subs]) => {
+    let html = `<details><summary>${cat}</summary>`;
+
+    Object.entries(subs).forEach(([sub, _]) => {
+      html += `<div class="sub"><b>${sub}</b><ul>`;
+      models.forEach(m => {
+        const val = data[m].tmmlu_breakdown[cat][sub];
+        html += `<li>${m}: ${(val * 100).toFixed(2)}</li>`;
+      });
+      html += "</ul></div>";
+    });
+
+    html += "</details>";
+    container.innerHTML += html;
+  });
 }
