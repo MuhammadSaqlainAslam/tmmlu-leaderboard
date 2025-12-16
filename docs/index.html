@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>TMMLU+ Leaderboard</title>
@@ -10,7 +10,8 @@
 <style>
 body { padding:40px; background:#f8f9fa; }
 .card { border-radius:12px; margin-bottom:12px; }
-.card-header { cursor:pointer; }
+.card-header { cursor:pointer; background:#0d6efd; color:white; }
+.card-header:hover { background:#0b5ed7; }
 </style>
 </head>
 
@@ -19,7 +20,6 @@ body { padding:40px; background:#f8f9fa; }
 <h2 class="text-center mb-4">📊 TMMLU+ Leaderboard</h2>
 
 <div id="table"></div>
-
 <hr>
 
 <h4 class="text-center">🧭 TMMLU+ Category Radar (Average)</h4>
@@ -31,96 +31,110 @@ body { padding:40px; background:#f8f9fa; }
 <div id="accordion"></div>
 
 <script>
-fetch("leaderboard.json")
-.then(r=>r.json())
-.then(data=>{
+// === Dynamically compute base path for JSON ===
+const basePath = window.location.pathname.replace(/\/[^\/]*$/, '/');
+const jsonURL = basePath + "leaderboard.json";
 
-/* ================= TABLE ================= */
-let html = `<table class="table table-bordered table-striped">
-<thead class="table-dark">
-<tr><th>Rank</th><th>Model</th><th>Overall</th><th>TMMLU+</th></tr>
-</thead><tbody>`;
+fetch(jsonURL)
+.then(res => {
+  if (!res.ok) throw new Error("JSON load failed: " + res.status);
+  return res.json();
+})
+.then(data => {
 
-data.leaderboard.forEach((m,i)=>{
-  html += `<tr><td>${i+1}</td><td>${m.model}</td>
-           <td>${m.overall}</td><td>${m.tmmlu_overall}</td></tr>`;
-});
-html += "</tbody></table>";
-document.getElementById("table").innerHTML = html;
+  // ------- Table -------
+  let html = `<table class="table table-bordered table-striped">
+  <thead class="table-dark"><tr><th>Rank</th><th>Model</th><th>Overall</th><th>TMMLU+</th></tr></thead><tbody>`;
+  
+  data.leaderboard.forEach((m,i) => {
+    html += `<tr><td>${i+1}</td><td>${m.model}</td>
+             <td>${m.overall}</td><td>${m.tmmlu_overall}</td></tr>`;
+  });
+  html += "</tbody></table>";
+  document.getElementById("table").innerHTML = html;
 
-/* ================= RADAR ================= */
-const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
-const traces = [];
+  // ------- Radar -------
+  const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
+  const radarTraces = [];
 
-data.leaderboard.forEach((m,i)=>{
-  const tmmlu = data.details[m.model].tmmlu;
-  const cats = Object.keys(tmmlu);
-  const avgs = [];
+  data.leaderboard.forEach((m,i) => {
+    const tmmlu = data.details[m.model].tmmlu;
+    const cats = Object.keys(tmmlu);
+    const avgScores = [];
 
-  cats.forEach(c=>{
-    let sum=0, cnt=0;
-    Object.values(tmmlu[c]).forEach(sub=>{
-      Object.values(sub).forEach(v=>{ sum+=v; cnt++; });
+    cats.forEach(cat => {
+      let sum = 0, count = 0;
+      Object.values(tmmlu[cat]).forEach(sub => {
+        Object.values(sub).forEach(score => {
+          sum += score;
+          count++;
+        });
+      });
+      avgScores.push(count ? sum/count : 0);
     });
-    avgs.push(cnt ? sum/cnt : 0);
+
+    radarTraces.push({
+      type: "scatterpolar",
+      r: avgScores,
+      theta: cats,
+      fill: "toself",
+      name: m.model,
+      line: { color: colors[i % colors.length] }
+    });
   });
 
-  traces.push({
-    type:"scatterpolar",
-    r:avgs,
-    theta:cats,
-    fill:"toself",
-    name:m.model,
-    line:{color:colors[i%colors.length]}
+  Plotly.newPlot("radar", radarTraces, {
+    polar: { radialaxis: { range: [0,1] } },
+    legend: { orientation: "h" },
+    height: 500
   });
-});
 
-Plotly.newPlot("radar", traces, {
-  polar:{radialaxis:{range:[0,1]}},
-  legend:{orientation:"h"},
-  height:500
-});
-
-/* ================= ACCORDION ================= */
-let acc = "";
-data.leaderboard.forEach((m,mi)=>{
-  const tmmlu = data.details[m.model].tmmlu;
-
-  acc += `
-  <div class="card">
-    <div class="card-header bg-primary text-white" data-bs-toggle="collapse" data-bs-target="#m${mi}">
-      ${m.model}
-    </div>
-    <div id="m${mi}" class="collapse">
-      <div class="card-body">`;
-
-  Object.entries(tmmlu).forEach(([cat,subs],ci)=>{
-    acc += `
-    <div class="card mb-2">
-      <div class="card-header bg-secondary text-white"
-           data-bs-toggle="collapse"
-           data-bs-target="#c${mi}_${ci}">
-        ${cat}
+  // ------- Nested Accordion -------
+  let accHTML = "";
+  data.leaderboard.forEach((m,mi) => {
+    accHTML += `
+    <div class="card">
+      <div class="card-header" data-bs-toggle="collapse" data-bs-target="#model${mi}">
+        ${m.model}
       </div>
-      <div id="c${mi}_${ci}" class="collapse">
+      <div id="model${mi}" class="collapse">
         <div class="card-body">`;
 
-    Object.entries(subs).forEach(([sub,tasks])=>{
-      acc += `<h6>${sub}</h6><ul>`;
-      Object.entries(tasks).forEach(([k,v])=>{
-        acc += `<li>${k}: <b>${v.toFixed(3)}</b></li>`;
+    const tmmlu = data.details[m.model].tmmlu;
+    let ci = 0;
+
+    Object.entries(tmmlu).forEach(([cat, subs]) => {
+      accHTML += `
+      <div class="card mb-2">
+        <div class="card-header bg-secondary text-white"
+             data-bs-toggle="collapse"
+             data-bs-target="#cat${mi}_${ci}">
+          ${cat}
+        </div>
+        <div id="cat${mi}_${ci}" class="collapse">
+          <div class="card-body">`;
+
+      Object.entries(subs).forEach(([sub, tasks]) => {
+        accHTML += `<h6>${sub}</h6><ul>`;
+        Object.entries(tasks).forEach(([task, score]) => {
+          accHTML += `<li>${task}: <b>${score.toFixed(3)}</b></li>`;
+        });
+        accHTML += "</ul>";
       });
-      acc += `</ul>`;
+
+      accHTML += `</div></div></div>`;
+      ci++;
     });
 
-    acc += `</div></div></div>`;
+    accHTML += `</div></div></div>`;
   });
 
-  acc += `</div></div></div>`;
-});
+  document.getElementById("accordion").innerHTML = accHTML;
 
-document.getElementById("accordion").innerHTML = acc;
-
+})
+.catch(err => {
+  console.error(err);
+  document.getElementById("table").innerText = "⚠️ Error loading leaderboard data.";
 });
 </script>
 
