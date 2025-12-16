@@ -1,0 +1,104 @@
+{
+  "leaderboard": [
+    {
+      "model": "FoxBrain_v1.2_70B_0630",
+      "overall": 0.2985,
+      "tmmlu_overall": 0.5001
+    },
+    {
+      "model": "gpt-oss-20b",
+      "overall": 0.1545,
+      "tmmlu_overall": 0.5982
+    }
+  ],
+  "details": {
+    "FoxBrain_v1.2_70B_0630": {
+      "tmmlu": {
+        "Science": {
+          "advance_chemistry": 0.561,
+          "engineering_math": 0.4078,
+          "fire_science": 0.4355,
+          "organic_chemistry": 0.5229,
+          "physics": 0.4732,
+          "secondary_physics": 0.4732,
+          "statistics_and_machine_learning": 0.6339
+        },
+        "Business": {
+          "auditing": 0.4,
+          "business_management": 0.482,
+          "finance_banking": 0.4074,
+          "financial_analysis": 0.5393,
+          "insurance_studies": 0.4382,
+          "management_accounting": 0.4698,
+          "marketing_management": 0.6559,
+          "taxation": 0.2747
+        },
+        "Health & Medicine": {
+          "basic_medical_science": 0.609,
+          "clinical_psychology": 0.56,
+          "dentistry": 0.4612,
+          "pharmacology": 0.5278,
+          "pharmacy": 0.3862
+        },
+        "Tech & Engineering": {
+          "computer_science": 0.6552,
+          "mechanical": 0.6102,
+          "technical": 0.5174
+        }
+      },
+      "general": {
+        "AIEC": 0.4552,
+        "AITEST": 0.0,
+        "GPQA": 0.0,
+        "GSM8K": 0.0,
+        "TW-RAG": 0.3,
+        "drcd": 0.584,
+        "penguin_table": 0.75
+      }
+    },
+    "gpt-oss-20b": {
+      "tmmlu": {
+        "Science": {
+          "advance_chemistry": 0.6504,
+          "engineering_math": 0.6796,
+          "fire_science": 0.5806,
+          "organic_chemistry": 0.6239,
+          "physics": 0.625,
+          "secondary_physics": 0.625,
+          "statistics_and_machine_learning": 0.7679
+        },
+        "Business": {
+          "auditing": 0.4873,
+          "business_management": 0.5252,
+          "finance_banking": 0.4815,
+          "financial_analysis": 0.7016,
+          "insurance_studies": 0.4329,
+          "management_accounting": 0.6558,
+          "marketing_management": 0.6774,
+          "taxation": 0.296
+        },
+        "Health & Medicine": {
+          "basic_medical_science": 0.7075,
+          "clinical_psychology": 0.672,
+          "dentistry": 0.5363,
+          "pharmacology": 0.687,
+          "pharmacy": 0.509
+        },
+        "Tech & Engineering": {
+          "computer_science": 0.7471,
+          "mechanical": 0.6017,
+          "technical": 0.4876
+        }
+      },
+      "general": {
+        "AIEC": 0.0,
+        "AITEST": 0.0,
+        "GPQA": 0.0,
+        "GSM8K": 0.0,
+        "TW-RAG": 0.3,
+        "drcd": 0.0386,
+        "penguin_table": 0.7431
+      }
+    }
+  }
+}
