@@ -1,36 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>TMMLU+ Leaderboard</title>
-
-  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8" />
+<title>TMMLU+ Leaderboard</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+body { font-family: Arial; margin: 20px; }
+details { margin-left: 20px; }
+.model { border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; }
+</style>
 </head>
 
 <body>
-  <h1>🏆 TMMLU+ Leaderboard</h1>
+<h1>TMMLU+ Leaderboard</h1>
+<div id="radar"></div>
+<div id="models"></div>
 
-  <section>
-    <h2>📊 Overall Leaderboard</h2>
-    <table id="leaderboard-table"></table>
-  </section>
+<script>
+fetch("./leaderboard.json")
+.then(r => r.json())
+.then(data => {
 
-  <section>
-    <h2>🧭 TMMLU+ Category Comparison (Radar)</h2>
-    <div id="tmmlu-radar"></div>
-  </section>
+  const cats = Object.keys(data.models[0].tmmlu_categories)
 
-  <section>
-    <h2>📊 TMMLU+ Category Comparison (Bar Chart)</h2>
-    <div id="tmmlu-bar"></div>
-  </section>
+  const traces = data.models.map(m => ({
+    type: "scatterpolar",
+    r: cats.map(c => m.tmmlu_categories[c]),
+    theta: cats,
+    fill: "toself",
+    name: m.name
+  }))
 
-  <section>
-    <h2>📚 TMMLU+ Categories → Sub-Disciplines</h2>
-    <div id="tmmlu-accordion"></div>
-  </section>
+  Plotly.newPlot("radar", traces, {
+    polar: { radialaxis: { visible: true, range: [0,1] } },
+    title: "TMMLU+ Category Averages"
+  })
 
-  <script src="script.js"></script>
+  const root = document.getElementById("models")
+
+  data.models.forEach(m => {
+    const div = document.createElement("div")
+    div.className = "model"
+
+    div.innerHTML = `
+      <h2>${m.name}</h2>
+      <p><b>TMMLU+ Avg:</b> ${m.tmmlu_avg}</p>
+      <p><b>General Avg:</b> ${m.general_avg}</p>
+    `
+
+    for (const [cat, subs] of Object.entries(m.tmmlu_details)) {
+      const d1 = document.createElement("details")
+      d1.innerHTML = `<summary>${cat}</summary>`
+
+      for (const [sub, scores] of Object.entries(subs)) {
+        const d2 = document.createElement("details")
+        d2.innerHTML = `<summary>${sub}</summary>`
+
+        const p = document.createElement("p")
+        p.textContent = scores[m.name] ?? "N/A"
+        d2.appendChild(p)
+
+        d1.appendChild(d2)
+      }
+      div.appendChild(d1)
+    }
+
+    root.appendChild(div)
+  })
+})
+.catch(err => {
+  document.body.innerHTML = "⚠️ Error loading leaderboard data"
+  console.error(err)
+})
+</script>
 </body>
 </html>
