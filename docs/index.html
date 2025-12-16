@@ -21,11 +21,9 @@ h2, h4 { text-align: center; }
 
 <h2 class="mb-4">📊 TMMLU+ Leaderboard</h2>
 
-<!-- Table -->
 <div id="table"></div>
 <hr>
 
-<!-- Discipline Radar -->
 <div class="card">
   <div class="card-header" data-bs-toggle="collapse" data-bs-target="#discRadar">
     🧭 TMMLU+ Discipline Comparison (Radar)
@@ -37,7 +35,6 @@ h2, h4 { text-align: center; }
   </div>
 </div>
 
-<!-- Category Radar -->
 <div class="card">
   <div class="card-header" data-bs-toggle="collapse" data-bs-target="#catRadar">
     🧭 TMMLU+ Category Comparison (Radar)
@@ -49,7 +46,6 @@ h2, h4 { text-align: center; }
   </div>
 </div>
 
-<!-- Category Bar Chart -->
 <div class="card">
   <div class="card-header" data-bs-toggle="collapse" data-bs-target="#barCat">
     📊 TMMLU+ Category Comparison (Bar)
@@ -64,96 +60,86 @@ h2, h4 { text-align: center; }
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-// ===== Example leaderboard JSON =====
-const data = {
-  "leaderboard": [
-    { "model": "FoxBrain_v1.2_70B_0630", "overall": 0.2985, "tmmlu_overall": 0.5001 },
-    { "model": "gpt-oss-20b", "overall": 0.1545, "tmmlu_overall": 0.5982 }
-  ],
-  "details": {
-    "FoxBrain_v1.2_70B_0630": {
-      "tmmlu_disciplines": { "Science": 0.5, "Business": 0.5, "Health & Medicine": 0.5, "Tech & Engineering": 0.58 },
-      "tmmlu_categories": { "Chemistry": 0.5, "Physics": 0.48, "Biology": 0.52, "Engineering": 0.55 },
-      "general": { "AIEC": 0.4552, "TW-RAG": 0.3, "drcd": 0.584, "penguin_table": 0.75 }
-    },
-    "gpt-oss-20b": {
-      "tmmlu_disciplines": { "Science": 0.65, "Business": 0.55, "Health & Medicine": 0.61, "Tech & Engineering": 0.61 },
-      "tmmlu_categories": { "Chemistry": 0.65, "Physics": 0.63, "Biology": 0.66, "Engineering": 0.61 },
-      "general": { "AIEC": 0.0, "TW-RAG": 0.3, "drcd": 0.0386, "penguin_table": 0.7431 }
-    }
-  }
-};
+// ===== Determine correct path for GitHub Pages =====
+const baseURL = window.location.pathname.replace(/\/[^\/]*$/, '/');
+// leaderboard.json must be in the same folder as index.html
+const jsonPath = baseURL + "leaderboard.json";
 
-// ===== Table =====
-const table = document.getElementById("table");
-let html = `<table class="table table-striped table-bordered">
-<thead class="table-dark"><tr><th>Rank</th><th>Model</th><th>Overall</th><th>TMMLU+</th></tr></thead><tbody>`;
-data.leaderboard.forEach((m,i)=>{
-  html += `<tr><td>${i+1}</td><td>${m.model}</td><td>${m.overall}</td><td>${m.tmmlu_overall}</td></tr>`;
-});
-html += "</tbody></table>";
-table.innerHTML = html;
-
-// ===== Colors =====
+// ===== Colors for models =====
 const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
 
-// ===== Traces =====
-const discTraces = [];
-const catTraces = [];
-const barTraces = [];
+fetch(jsonPath)
+.then(r => r.json())
+.then(data => {
 
-data.leaderboard.forEach((m,i)=>{
-  const d = data.details[m.model];
-  const color = colors[i % colors.length];
+  // ===== Table =====
+  const table = document.getElementById("table");
+  let html = `<table class="table table-striped table-bordered">
+<thead class="table-dark"><tr><th>Rank</th><th>Model</th><th>Overall</th><th>TMMLU+</th></tr></thead><tbody>`;
+  data.leaderboard.forEach((m,i)=>{
+    html += `<tr><td>${i+1}</td><td>${m.model}</td><td>${m.overall}</td><td>${m.tmmlu_overall}</td></tr>`;
+  });
+  html += "</tbody></table>";
+  table.innerHTML = html;
 
-  // Radar - Discipline
-  discTraces.push({
-    type:"scatterpolar",
-    r:Object.values(d.tmmlu_disciplines),
-    theta:Object.keys(d.tmmlu_disciplines),
-    fill:"toself",
-    name:m.model,
-    line:{color:color, width:2}
+  // ===== Prepare traces =====
+  const discTraces = [], catTraces = [], barTraces = [];
+
+  data.leaderboard.forEach((m,i)=>{
+    const d = data.details[m.model];
+    const color = colors[i % colors.length];
+
+    // Radar - Discipline
+    discTraces.push({
+      type:"scatterpolar",
+      r:Object.values(d.tmmlu_disciplines),
+      theta:Object.keys(d.tmmlu_disciplines),
+      fill:"toself",
+      name:m.model,
+      line:{color:color, width:2}
+    });
+
+    // Radar - Category
+    catTraces.push({
+      type:"scatterpolar",
+      r:Object.values(d.tmmlu_categories),
+      theta:Object.keys(d.tmmlu_categories),
+      fill:"toself",
+      name:m.model,
+      line:{color:color, width:2}
+    });
+
+    // Bar - Category
+    barTraces.push({
+      type:"bar",
+      x:Object.keys(d.tmmlu_categories),
+      y:Object.values(d.tmmlu_categories),
+      name:m.model,
+      marker:{color:color}
+    });
   });
 
-  // Radar - Category
-  catTraces.push({
-    type:"scatterpolar",
-    r:Object.values(d.tmmlu_categories),
-    theta:Object.keys(d.tmmlu_categories),
-    fill:"toself",
-    name:m.model,
-    line:{color:color, width:2}
+  // ===== Plot charts =====
+  Plotly.newPlot("radar-discipline", discTraces,{
+    polar:{radialaxis:{range:[0,1]}},
+    legend:{orientation:"h"},
+    width:600, height:500
   });
 
-  // Bar - Category
-  barTraces.push({
-    type:"bar",
-    x:Object.keys(d.tmmlu_categories),
-    y:Object.values(d.tmmlu_categories),
-    name:m.model,
-    marker:{color:color}
+  Plotly.newPlot("radar-category", catTraces,{
+    polar:{radialaxis:{range:[0,1]}},
+    legend:{orientation:"h"},
+    width:600, height:500
   });
-});
 
-// ===== Plot Charts =====
-Plotly.newPlot("radar-discipline", discTraces,{
-  polar:{radialaxis:{range:[0,1]}},
-  legend:{orientation:"h"},
-  width:600, height:500
-});
+  Plotly.newPlot("bar-category", barTraces,{
+    barmode:"group",
+    yaxis:{range:[0,1]},
+    width:800, height:400
+  });
 
-Plotly.newPlot("radar-category", catTraces,{
-  polar:{radialaxis:{range:[0,1]}},
-  legend:{orientation:"h"},
-  width:600, height:500
-});
-
-Plotly.newPlot("bar-category", barTraces,{
-  barmode:"group",
-  yaxis:{range:[0,1]},
-  width:800, height:400
-});
+})
+.catch(e => console.error("Failed to load leaderboard.json:", e));
 </script>
 
 </body>
