@@ -1,55 +1,74 @@
 {
   "leaderboard": [
     {
-      "model": "gpt-oss-20b",
-      "overall": 0.5116,
-      "tmmlu_overall": 0.4821
+      "model": "FoxBrain_v1.2_70B_0630",
+      "overall": 0.3013,
+      "tmmlu_overall": 0.4925
     },
     {
-      "model": "FoxBrain_v1.2_70B_0630",
-      "overall": 0.4781,
-      "tmmlu_overall": 0.4513
+      "model": "gpt-oss-20b",
+      "overall": null,
+      "tmmlu_overall": 0.5447
     }
   ],
   "details": {
-    "gpt-oss-20b": {
-      "tmmlu": {
-        "Science": {
-          "physics": 0.45,
-          "chemistry": 0.48
-        },
-        "Business": {
-          "finance_banking": 0.52
-        }
+    "FoxBrain_v1.2_70B_0630": {
+      "tmmlu_subjects": {
+        "agriculture": 0.397350993,
+        "anti_money_laundering": 0.611940299,
+        "auditing": 0.4,
+        "basic_medical_science": 0.609014675,
+        "business_management": 0.482014388,
+        "chinese_language_and_literature": 0.427135678,
+        "clinical_psychology": 0.56,
+        "computer_science": 0.655172414,
+        "culinary_skills": 0.523972603,
+        "dentistry": 0.461152882,
+        "economics": 0.605597964,
+        "education": 0.5,
+        "educational_psychology": 0.511363636,
+        "engineering_math": 0.40776699
+      },
+      "tmmlu_categories": {
+        "agriculture": 0.397350993,
+        "anti": 0.611940299,
+        "auditing": 0.4,
+        "basic": 0.609014675,
+        "business": 0.482014388,
+        "chinese": 0.427135678,
+        "clinical": 0.56,
+        "computer": 0.655172414,
+        "culinary": 0.523972603,
+        "dentistry": 0.461152882,
+        "economics": 0.605597964,
+        "education": 0.505681818,
+        "engineering": 0.40776699
       },
       "general": {
-        "drcd": 0.0386,
-        "penguin_table": 0.7431,
-        "TW-RAG": 0.3,
-        "GSM8K": 0.0,
-        "GPQA": 0.0,
-        "AIEC": 0.0,
-        "AITEST": 0.0
+        "TCEval-v2/TW-RAG": 0.3,
+        "TCEval-v2/drcd": 0.0386487260234755,
+        "TCEval-v2/penguin_table": 0.7430555555555556,
+        "TMMLU+_Avg": 0.5565559353351298,
+        "TMMLU_Avg": 0.0,
+        "AIEC": null,
+        "AITEST": null,
+        "GPQA": null,
+        "GSM8K": null
       }
     },
-    "FoxBrain_v1.2_70B_0630": {
-      "tmmlu": {
-        "Science": {
-          "physics": 0.51,
-          "chemistry": 0.49
-        },
-        "Business": {
-          "finance_banking": 0.46
-        }
-      },
+    "gpt-oss-20b": {
+      "tmmlu_subjects": {},
+      "tmmlu_categories": {},
       "general": {
-        "drcd": 0.584,
-        "penguin_table": 0.75,
-        "TW-RAG": 0.3,
-        "GSM8K": 0.0,
-        "GPQA": 0.0,
+        "TCEval-v2/TW-RAG": 0.3,
+        "TCEval-v2/drcd": 0.584,
+        "TCEval-v2/penguin_table": 0.75,
+        "TMMLU+_Avg": null,
+        "TMMLU_Avg": 0.0,
         "AIEC": 0.4552,
-        "AITEST": 0.0
+        "AITEST": 0.0,
+        "GPQA": 0.0,
+        "GSM8K": 0.0
       }
     }
   }
