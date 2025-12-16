@@ -1,21 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>TMMLU+ Leaderboard</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TMMLU+ Leaderboard</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
+  <header>
     <h1>TMMLU+ Leaderboard</h1>
-    <div id="leaderboard"></div>
-    
-    <h2>TMMLU+ Category Comparison (Radar Chart)</h2>
-    <div id="radar-chart"></div>
+  </header>
 
+  <section id="avg-section">
+    <h2>Overall Model Performance</h2>
+    <div id="avg-plot"></div>
+  </section>
+
+  <section id="category-section">
+    <h2>TMMLU+ Category Comparison (Radar)</h2>
+    <div id="category-radar"></div>
+  </section>
+
+  <section id="bar-section">
     <h2>TMMLU+ Category Comparison (Bar Chart)</h2>
-    <div id="bar-chart"></div>
+    <div id="category-bar"></div>
+  </section>
 
-    <script src="app.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
