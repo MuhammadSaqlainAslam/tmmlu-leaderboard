@@ -1,0 +1,454 @@
+{
+  "leaderboard": [
+    {
+      "model": "FoxBrain_v1.2_70B_0630",
+      "overall": 0.3418,
+      "tmmlu_overall": 0.504
+    },
+    {
+      "model": "gpt-oss-20b",
+      "overall": NaN,
+      "tmmlu_overall": 0.5566
+    }
+  ],
+  "details": {
+    "FoxBrain_v1.2_70B_0630": {
+      "tmmlu": {
+        "Science": {
+          "fire_science": {
+            "fire_science": 0.435483871
+          },
+          "secondary_physics": {
+            "secondary_physics": 0.473214286
+          },
+          "advance_chemistry": {
+            "advance_chemistry": 0.56097561
+          },
+          "organic_chemistry": {
+            "organic_chemistry": 0.52293578
+          },
+          "statistics_and_machine_learning": {
+            "statistics_and_machine_learning": 0.633928571
+          },
+          "junior_science_exam": {
+            "junior_science_exam": 0.676056338
+          },
+          "physics": {
+            "physics": 0.639175258
+          },
+          "junior_chemistry": {
+            "junior_chemistry": 0.564593301
+          },
+          "engineering_math": {
+            "engineering_math": 0.40776699
+          }
+        },
+        "Business": {
+          "auditing": {
+            "auditing": 0.4
+          },
+          "financial_analysis": {
+            "financial_analysis": 0.539267016
+          },
+          "insurance_studies": {
+            "insurance_studies": 0.438157895
+          },
+          "business_management": {
+            "business_management": 0.482014388
+          },
+          "marketing_management": {
+            "marketing_management": 0.655913978
+          },
+          "management_accounting": {
+            "management_accounting": 0.469767442
+          },
+          "accounting": {
+            "accounting": 0.193717277
+          },
+          "finance_banking": {
+            "finance_banking": 0.407407407
+          },
+          "economics": {
+            "economics": 0.605597964
+          },
+          "taxation": {
+            "taxation": 0.274666667
+          },
+          "trade": {
+            "trade": 0.330677291
+          },
+          "real_estate": {
+            "real_estate": 0.402173913
+          }
+        },
+        "Other": {
+          "agriculture": {
+            "agriculture": 0.397350993
+          },
+          "veterinary_pathology": {
+            "veterinary_pathology": 0.477031802
+          },
+          "logic_reasoning": {
+            "logic_reasoning": 0.503597122
+          },
+          "taiwanese_hokkien": {
+            "taiwanese_hokkien": 0.294573643
+          },
+          "three_principles_of_people": {
+            "three_principles_of_people": 0.64028777
+          },
+          "optometry": {
+            "optometry": 0.331521739
+          },
+          "junior_social_studies": {
+            "junior_social_studies": 0.642857143
+          },
+          "tve_mathematics": {
+            "tve_mathematics": 0.6
+          },
+          "chinese_language_and_literature": {
+            "chinese_language_and_literature": 0.427135678
+          },
+          "jce_humanities": {
+            "jce_humanities": 0.533333333
+          },
+          "official_document_management": {
+            "official_document_management": 0.405405405
+          },
+          "general_principles_of_law": {
+            "general_principles_of_law": 0.481132075
+          },
+          "music": {
+            "music": 0.424460432
+          },
+          "traditional_chinese_medicine_clinical_medicine": {
+            "traditional_chinese_medicine_clinical_medicine": 0.381294964
+          },
+          "national_protection": {
+            "national_protection": 0.535545024
+          },
+          "administrative_law": {
+            "administrative_law": 0.373809524
+          },
+          "ttqav2": {
+            "ttqav2": 0.725663717
+          },
+          "geography_of_taiwan": {
+            "geography_of_taiwan": 0.537760417
+          },
+          "nautical_science": {
+            "nautical_science": 0.372050817
+          },
+          "tve_natural_sciences": {
+            "tve_natural_sciences": 0.544811321
+          },
+          "macroeconomics": {
+            "macroeconomics": 0.510948905
+          },
+          "education": {
+            "education": 0.5
+          },
+          "tve_design": {
+            "tve_design": 0.58125
+          },
+          "culinary_skills": {
+            "culinary_skills": 0.523972603
+          },
+          "occupational_therapy_for_psychological_disorders": {
+            "occupational_therapy_for_psychological_disorders": 0.513812155
+          },
+          "educational_psychology": {
+            "educational_psychology": 0.511363636
+          },
+          "tve_chinese_language": {
+            "tve_chinese_language": 0.625258799
+          },
+          "education_(profession_level)": {
+            "education_(profession_level)": 0.419753086
+          },
+          "physical_education": {
+            "physical_education": 0.586592179
+          },
+          "junior_chinese_exam": {
+            "junior_chinese_exam": 0.685714286
+          },
+          "junior_math_exam": {
+            "junior_math_exam": 0.56
+          },
+          "anti_money_laundering": {
+            "anti_money_laundering": 0.611940299
+          },
+          "politic_science": {
+            "politic_science": 0.614070352
+          },
+          "introduction_to_law": {
+            "introduction_to_law": 0.481012658
+          },
+          "human_behavior": {
+            "human_behavior": 0.598705502
+          },
+          "trust_practice": {
+            "trust_practice": 0.341645885
+          }
+        },
+        "Tech & Engineering": {
+          "technical": {
+            "technical": 0.517412935
+          },
+          "computer_science": {
+            "computer_science": 0.655172414
+          },
+          "mechanical": {
+            "mechanical": 0.610169492
+          }
+        },
+        "Health & Medicine": {
+          "clinical_psychology": {
+            "clinical_psychology": 0.56
+          },
+          "pharmacy": {
+            "pharmacy": 0.386189258
+          },
+          "dentistry": {
+            "dentistry": 0.461152882
+          },
+          "basic_medical_science": {
+            "basic_medical_science": 0.609014675
+          },
+          "pharmacology": {
+            "pharmacology": 0.526863085
+          },
+          "veterinary_pharmacology": {
+            "veterinary_pharmacology": 0.527777778
+          }
+        }
+      },
+      "general": {
+        "TCEval-v2/penguin_table": 0.75,
+        "AIEC": 0.455235205,
+        "AITEST": 0.0,
+        "TMMLU_Avg": 0.0,
+        "TMMLU+_Avg": 0.50398344
+      }
+    },
+    "gpt-oss-20b": {
+      "tmmlu": {
+        "Science": {
+          "fire_science": {
+            "fire_science": 0.5806451612903226
+          },
+          "secondary_physics": {
+            "secondary_physics": 0.625
+          },
+          "advance_chemistry": {
+            "advance_chemistry": 0.6504065040650406
+          },
+          "organic_chemistry": {
+            "organic_chemistry": 0.6238532110091743
+          },
+          "statistics_and_machine_learning": {
+            "statistics_and_machine_learning": 0.7678571428571429
+          },
+          "junior_science_exam": {
+            "junior_science_exam": 0.7183098591549296
+          },
+          "physics": {
+            "physics": 0.7731958762886598
+          },
+          "junior_chemistry": {
+            "junior_chemistry": 0.6985645933014354
+          },
+          "engineering_math": {
+            "engineering_math": 0.6796116504854369
+          }
+        },
+        "Business": {
+          "auditing": {
+            "auditing": 0.4872727272727272
+          },
+          "financial_analysis": {
+            "financial_analysis": 0.7015706806282722
+          },
+          "insurance_studies": {
+            "insurance_studies": 0.4328947368421053
+          },
+          "business_management": {
+            "business_management": 0.5251798561151079
+          },
+          "marketing_management": {
+            "marketing_management": 0.6774193548387096
+          },
+          "management_accounting": {
+            "management_accounting": 0.6558139534883721
+          },
+          "accounting": {
+            "accounting": 0.3403141361256545
+          },
+          "finance_banking": {
+            "finance_banking": 0.4814814814814814
+          },
+          "economics": {
+            "economics": 0.6895674300254453
+          },
+          "taxation": {
+            "taxation": 0.296
+          },
+          "trade": {
+            "trade": 0.396414342629482
+          },
+          "real_estate": {
+            "real_estate": 0.4782608695652174
+          }
+        },
+        "Other": {
+          "agriculture": {
+            "agriculture": 0.4569536423841059
+          },
+          "veterinary_pathology": {
+            "veterinary_pathology": 0.5547703180212014
+          },
+          "logic_reasoning": {
+            "logic_reasoning": 0.5611510791366906
+          },
+          "taiwanese_hokkien": {
+            "taiwanese_hokkien": 0.3333333333333333
+          },
+          "three_principles_of_people": {
+            "three_principles_of_people": 0.5899280575539568
+          },
+          "optometry": {
+            "optometry": 0.4684782608695652
+          },
+          "junior_social_studies": {
+            "junior_social_studies": 0.5634920634920635
+          },
+          "tve_mathematics": {
+            "tve_mathematics": 0.7666666666666667
+          },
+          "chinese_language_and_literature": {
+            "chinese_language_and_literature": 0.4020100502512563
+          },
+          "jce_humanities": {
+            "jce_humanities": 0.4333333333333333
+          },
+          "official_document_management": {
+            "official_document_management": 0.4594594594594595
+          },
+          "general_principles_of_law": {
+            "general_principles_of_law": 0.3962264150943396
+          },
+          "music": {
+            "music": 0.4820143884892086
+          },
+          "traditional_chinese_medicine_clinical_medicine": {
+            "traditional_chinese_medicine_clinical_medicine": 0.3489208633093525
+          },
+          "national_protection": {
+            "national_protection": 0.4976303317535545
+          },
+          "administrative_law": {
+            "administrative_law": 0.3714285714285714
+          },
+          "ttqav2": {
+            "ttqav2": 0.6460176991150443
+          },
+          "geography_of_taiwan": {
+            "geography_of_taiwan": 0.5078125
+          },
+          "nautical_science": {
+            "nautical_science": 0.4900181488203267
+          },
+          "tve_natural_sciences": {
+            "tve_natural_sciences": 0.6084905660377359
+          },
+          "macroeconomics": {
+            "macroeconomics": 0.5961070559610706
+          },
+          "education": {
+            "education": 0.4838709677419355
+          },
+          "tve_design": {
+            "tve_design": 0.59375
+          },
+          "culinary_skills": {
+            "culinary_skills": 0.4726027397260274
+          },
+          "occupational_therapy_for_psychological_disorders": {
+            "occupational_therapy_for_psychological_disorders": 0.6114180478821363
+          },
+          "educational_psychology": {
+            "educational_psychology": 0.625
+          },
+          "tve_chinese_language": {
+            "tve_chinese_language": 0.5652173913043478
+          },
+          "education_(profession_level)": {
+            "education_(profession_level)": 0.4897119341563786
+          },
+          "physical_education": {
+            "physical_education": 0.5698324022346368
+          },
+          "junior_chinese_exam": {
+            "junior_chinese_exam": 0.6285714285714286
+          },
+          "junior_math_exam": {
+            "junior_math_exam": 0.7314285714285714
+          },
+          "anti_money_laundering": {
+            "anti_money_laundering": 0.5298507462686567
+          },
+          "politic_science": {
+            "politic_science": 0.5768844221105528
+          },
+          "introduction_to_law": {
+            "introduction_to_law": 0.4388185654008439
+          },
+          "human_behavior": {
+            "human_behavior": 0.6472491909385113
+          },
+          "trust_practice": {
+            "trust_practice": 0.4014962593516209
+          }
+        },
+        "Tech & Engineering": {
+          "technical": {
+            "technical": 0.4875621890547263
+          },
+          "computer_science": {
+            "computer_science": 0.7471264367816092
+          },
+          "mechanical": {
+            "mechanical": 0.6016949152542372
+          }
+        },
+        "Health & Medicine": {
+          "clinical_psychology": {
+            "clinical_psychology": 0.672
+          },
+          "pharmacy": {
+            "pharmacy": 0.5089514066496164
+          },
+          "dentistry": {
+            "dentistry": 0.5363408521303258
+          },
+          "basic_medical_science": {
+            "basic_medical_science": 0.7075471698113207
+          },
+          "pharmacology": {
+            "pharmacology": 0.6048526863084922
+          },
+          "veterinary_pharmacology": {
+            "veterinary_pharmacology": 0.687037037037037
+          }
+        }
+      },
+      "general": {
+        "TCEval-v2/penguin_table": 0.7430555555555556,
+        "AIEC": NaN,
+        "AITEST": NaN,
+        "TMMLU_Avg": 0.0,
+        "TMMLU+_Avg": 0.5565559353351298
+      }
+    }
+  }
+}
