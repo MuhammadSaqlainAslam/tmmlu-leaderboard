@@ -1,36 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>TMMLU+ Leaderboard</title>
-
-  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <title>TMMLU+ Leaderboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .chart-container {
+            margin: 40px auto;
+            max-width: 900px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+    </style>
 </head>
-
 <body>
-  <h1>🏆 TMMLU+ Leaderboard</h1>
+    <h1>TMMLU+ Leaderboard</h1>
 
-  <section>
-    <h2>📊 Overall Leaderboard</h2>
-    <table id="leaderboard-table"></table>
-  </section>
+    <div class="chart-container" id="radarChart"></div>
+    <div class="chart-container" id="barChart"></div>
 
-  <section>
-    <h2>🧭 TMMLU+ Category Comparison (Radar)</h2>
-    <div id="tmmlu-radar"></div>
-  </section>
-
-  <section>
-    <h2>📊 TMMLU+ Category Comparison (Bar Chart)</h2>
-    <div id="tmmlu-bar"></div>
-  </section>
-
-  <section>
-    <h2>📚 TMMLU+ Categories → Sub-Disciplines</h2>
-    <div id="tmmlu-accordion"></div>
-  </section>
-
-  <script src="script.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
