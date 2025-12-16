@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <title>TMMLU+ Leaderboard</title>
 
 <!-- Bootstrap CSS -->
@@ -10,22 +10,22 @@
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
 <style>
-body { padding: 40px; background: #f8f9fa; }
-.card { border-radius: 12px; margin-bottom: 12px; }
-.card-header { background: #0d6efd; color: white; cursor: pointer; }
-.card-header:hover { background: #0b5ed7; }
+body { padding:40px; background:#f8f9fa; font-family: Arial, sans-serif; }
+.card { border-radius:12px; margin-bottom:12px; }
+.card-header { background:#0d6efd; color:white; cursor:pointer; }
+.card-header:hover { background:#0b5ed7; }
+h2, h4 { text-align: center; }
 </style>
 </head>
 <body>
 
-<h2 class="text-center mb-4">📊 TMMLU+ Leaderboard</h2>
+<h2 class="mb-4">📊 TMMLU+ Leaderboard</h2>
 
 <!-- Table -->
 <div id="table"></div>
-
 <hr>
 
-<!-- Radar Discipline Card -->
+<!-- Discipline Radar -->
 <div class="card">
   <div class="card-header" data-bs-toggle="collapse" data-bs-target="#discRadar">
     🧭 TMMLU+ Discipline Comparison (Radar)
@@ -37,7 +37,7 @@ body { padding: 40px; background: #f8f9fa; }
   </div>
 </div>
 
-<!-- Radar Category Card -->
+<!-- Category Radar -->
 <div class="card">
   <div class="card-header" data-bs-toggle="collapse" data-bs-target="#catRadar">
     🧭 TMMLU+ Category Comparison (Radar)
@@ -49,7 +49,7 @@ body { padding: 40px; background: #f8f9fa; }
   </div>
 </div>
 
-<!-- Bar Category Card -->
+<!-- Category Bar Chart -->
 <div class="card">
   <div class="card-header" data-bs-toggle="collapse" data-bs-target="#barCat">
     📊 TMMLU+ Category Comparison (Bar)
@@ -61,23 +61,14 @@ body { padding: 40px; background: #f8f9fa; }
   </div>
 </div>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-// ===== Embed leaderboard.json directly =====
+// ===== Example leaderboard JSON =====
 const data = {
   "leaderboard": [
-    {
-      "model": "FoxBrain_v1.2_70B_0630",
-      "overall": 0.2985,
-      "tmmlu_overall": 0.5001
-    },
-    {
-      "model": "gpt-oss-20b",
-      "overall": 0.1545,
-      "tmmlu_overall": 0.5982
-    }
+    { "model": "FoxBrain_v1.2_70B_0630", "overall": 0.2985, "tmmlu_overall": 0.5001 },
+    { "model": "gpt-oss-20b", "overall": 0.1545, "tmmlu_overall": 0.5982 }
   ],
   "details": {
     "FoxBrain_v1.2_70B_0630": {
@@ -96,83 +87,72 @@ const data = {
 // ===== Table =====
 const table = document.getElementById("table");
 let html = `<table class="table table-striped table-bordered">
-<thead class="table-dark">
-<tr><th>Rank</th><th>Model</th><th>Overall</th><th>TMMLU+</th></tr>
-</thead><tbody>`;
-
-data.leaderboard.forEach((m, i) => {
-  html += `<tr><td>${i+1}</td><td>${m.model}</td>
-           <td>${m.overall}</td><td>${m.tmmlu_overall}</td></tr>`;
+<thead class="table-dark"><tr><th>Rank</th><th>Model</th><th>Overall</th><th>TMMLU+</th></tr></thead><tbody>`;
+data.leaderboard.forEach((m,i)=>{
+  html += `<tr><td>${i+1}</td><td>${m.model}</td><td>${m.overall}</td><td>${m.tmmlu_overall}</td></tr>`;
 });
 html += "</tbody></table>";
 table.innerHTML = html;
 
-// ===== Colors for consistency =====
-const colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"];
+// ===== Colors =====
+const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
 
-// ===== Charts =====
+// ===== Traces =====
 const discTraces = [];
 const catTraces = [];
 const barTraces = [];
 
-data.leaderboard.forEach((m, i) => {
+data.leaderboard.forEach((m,i)=>{
   const d = data.details[m.model];
   const color = colors[i % colors.length];
 
   // Radar - Discipline
   discTraces.push({
-    type: "scatterpolar",
-    r: Object.values(d.tmmlu_disciplines),
-    theta: Object.keys(d.tmmlu_disciplines),
-    fill: "toself",
-    name: m.model,
-    marker: { color: color }
+    type:"scatterpolar",
+    r:Object.values(d.tmmlu_disciplines),
+    theta:Object.keys(d.tmmlu_disciplines),
+    fill:"toself",
+    name:m.model,
+    line:{color:color, width:2}
   });
 
   // Radar - Category
   catTraces.push({
-    type: "scatterpolar",
-    r: Object.values(d.tmmlu_categories),
-    theta: Object.keys(d.tmmlu_categories),
-    fill: "toself",
-    name: m.model,
-    marker: { color: color }
+    type:"scatterpolar",
+    r:Object.values(d.tmmlu_categories),
+    theta:Object.keys(d.tmmlu_categories),
+    fill:"toself",
+    name:m.model,
+    line:{color:color, width:2}
   });
 
-  // Bar chart
+  // Bar - Category
   barTraces.push({
-    type: "bar",
-    x: Object.keys(d.tmmlu_categories),
-    y: Object.values(d.tmmlu_categories),
-    name: m.model,
-    marker: { color: color }
+    type:"bar",
+    x:Object.keys(d.tmmlu_categories),
+    y:Object.values(d.tmmlu_categories),
+    name:m.model,
+    marker:{color:color}
   });
 });
 
-// Plot Radar Discipline
-Plotly.newPlot("radar-discipline", discTraces, {
-  polar: { radialaxis: { range: [0,1] }, angularaxis: { tickfont: { size:12 } } },
-  legend: { orientation: "h" },
-  margin: { t:50,b:50,l:50,r:50 },
-  width: 600,
-  height: 500
+// ===== Plot Charts =====
+Plotly.newPlot("radar-discipline", discTraces,{
+  polar:{radialaxis:{range:[0,1]}},
+  legend:{orientation:"h"},
+  width:600, height:500
 });
 
-// Plot Radar Category
-Plotly.newPlot("radar-category", catTraces, {
-  polar: { radialaxis: { range: [0,1] }, angularaxis: { tickfont: { size:12 } } },
-  legend: { orientation: "h" },
-  margin: { t:50,b:50,l:50,r:50 },
-  width: 600,
-  height: 500
+Plotly.newPlot("radar-category", catTraces,{
+  polar:{radialaxis:{range:[0,1]}},
+  legend:{orientation:"h"},
+  width:600, height:500
 });
 
-// Plot Bar Category
-Plotly.newPlot("bar-category", barTraces, {
-  barmode: "group",
-  yaxis: { range: [0,1] },
-  width: 800,
-  height: 400
+Plotly.newPlot("bar-category", barTraces,{
+  barmode:"group",
+  yaxis:{range:[0,1]},
+  width:800, height:400
 });
 </script>
 
