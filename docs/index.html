@@ -12,10 +12,16 @@
         body { background-color: var(--bg); font-family: 'Inter', sans-serif; padding-bottom: 50px; }
         .hero { background: white; border-bottom: 1px solid #e2e8f0; padding: 40px 0; margin-bottom: 30px; }
         .chart-container { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; min-height: 400px; }
+        
+        /* Search Bar Style */
+        .search-container { max-width: 500px; margin: 0 auto 30px auto; }
+        .form-control:focus { box-shadow: 0 0 0 0.25 red; border-color: #2563eb; }
+
         .lb-header { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; font-weight: 700; background: #1e293b; color: white; border-radius: 12px; margin-bottom: 10px; }
         .model-card { background: white; border-radius: 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; overflow: hidden; }
         .model-trigger { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; cursor: pointer; align-items: center; }
-        .section-title { font-weight: 800; font-size: 0.9rem; color: #475569; margin-top: 15px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }
+        
+        .section-title { font-weight: 800; font-size: 0.85rem; color: #475569; margin-top: 20px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }
         .category-item { border: 1px solid #f1f5f9; border-radius: 8px; margin-bottom: 5px; }
         .category-trigger { padding: 10px 15px; cursor: pointer; display: flex; justify-content: space-between; background: #fafafa; font-weight: 600; font-size: 0.85rem; }
         .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; padding: 12px; background: white; }
@@ -30,7 +36,7 @@
 <div class="hero text-center">
     <div class="container">
         <h1 class="fw-bold">🇹🇼 TMMLU+ Leaderboard</h1>
-        <p class="text-muted">Detailed Results for Traditional Chinese Large Language Models</p>
+        <p class="text-muted">Interactive Benchmark for Traditional Chinese Large Language Models</p>
     </div>
 </div>
 
@@ -38,6 +44,10 @@
     <div class="row">
         <div class="col-lg-6"><div class="chart-container"><div id="radar-chart"></div></div></div>
         <div class="col-lg-6"><div class="chart-container"><div id="bar-chart"></div></div></div>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="modelSearch" class="form-control form-control-lg shadow-sm" placeholder="🔍 Search models (e.g. FoxBrain, GPT)...">
     </div>
 
     <div class="lb-header mt-4">
@@ -62,27 +72,29 @@ const DISCIPLINE_MAP = {
 
 const GENERAL_TASKS = ["drcd", "penguin_table", "tw-rag", "gsm8k", "gpqa", "aiec", "aitest"];
 
+let globalData = []; // To store data for searching
+
 Papa.parse(CSV_PATH, {
     download: true, header: true, dynamicTyping: true,
-    complete: function(res) { process(res.data); }
+    complete: function(res) { 
+        globalData = process(res.data);
+        render(globalData);
+        draw(globalData);
+    }
 });
 
 function process(data) {
     const models = Object.keys(data[0]).filter(k => k !== 'task_name' && k !== 'metric');
-    let results = models.map(mName => {
+    return models.map(mName => {
         let mData = { name: mName, disciplines: {}, general: {}, allScores: [] };
-        
         data.forEach(row => {
             const score = row[mName];
             if (score === null || isNaN(score) || !row.task_name) return;
             const taskLower = row.task_name.toLowerCase();
             const metricLower = row.metric.toLowerCase();
 
-            // Filter for primary metrics
             if (metricLower.includes('accuracy') || metricLower.includes('match')) {
                 mData.allScores.push(score);
-
-                // Check for Discipline Category
                 let isDiscipline = false;
                 for (let disc in DISCIPLINE_MAP) {
                     if (DISCIPLINE_MAP[disc].some(sub => taskLower.includes(sub.toLowerCase()))) {
@@ -94,103 +106,93 @@ function process(data) {
                         isDiscipline = true;
                     }
                 }
-
-                // If not a discipline, check if it's a general benchmark
                 if (!isDiscipline) {
                     GENERAL_TASKS.forEach(gt => {
-                        if (taskLower.includes(gt)) {
-                            mData.general[gt.toUpperCase()] = score;
-                        }
+                        if (taskLower.includes(gt)) mData.general[gt.toUpperCase()] = score;
                     });
                 }
             }
         });
-
         mData.overall = mData.allScores.length ? (mData.allScores.reduce((a,b)=>a+b,0)/mData.allScores.length) : 0;
         let dAvgs = Object.values(mData.disciplines).map(arr => arr.reduce((a,b)=>a+b.score,0)/arr.length);
         mData.tmmlu_avg = dAvgs.length ? (dAvgs.reduce((a,b)=>a+b,0)/dAvgs.length) : 0;
         return mData;
     }).sort((a,b) => b.overall - a.overall);
-    render(results);
 }
 
 function render(data) {
     const container = document.getElementById('leaderboard-container');
     container.innerHTML = "";
+    if (data.length === 0) {
+        container.innerHTML = `<div class="text-center py-5 text-muted">No models found matching your search.</div>`;
+        return;
+    }
     data.forEach((m, mIdx) => {
-        // Build Disciplines HTML
         let discHTML = '';
         for (let disc in m.disciplines) {
             const avg = m.disciplines[disc].reduce((a,b)=>a+b.score,0) / m.disciplines[disc].length;
             const subId = `details-${mIdx}-${disc.replace(/[^a-zA-Z]/g, '')}`;
-            discHTML += `
-                <div class="category-item">
-                    <div class="category-trigger" data-bs-toggle="collapse" data-bs-target="#${subId}">
-                        <span>${disc} <small class="text-muted ms-2">(${(avg*100).toFixed(1)}%)</small></span>
-                        <small>Subjects ▾</small>
-                    </div>
-                    <div id="${subId}" class="collapse">
-                        <div class="subject-grid">${m.disciplines[disc].map(s => `
-                            <div class="subject-stat">
-                                <span class="subject-name">${s.subject}</span>
-                                <span class="subject-val">${(s.score*100).toFixed(1)}%</span>
-                            </div>`).join('')}
-                        </div>
-                    </div>
-                </div>`;
+            discHTML += `<div class="category-item">
+                <div class="category-trigger" data-bs-toggle="collapse" data-bs-target="#${subId}">
+                    <span>${disc} <small class="text-muted ms-2">(${(avg*100).toFixed(1)}%)</small></span>
+                    <small>Subjects ▾</small>
+                </div>
+                <div id="${subId}" class="collapse"><div class="subject-grid">
+                    ${m.disciplines[disc].map(s => `<div class="subject-stat">
+                        <span class="subject-name">${s.subject}</span>
+                        <span class="subject-val">${(s.score*100).toFixed(1)}%</span>
+                    </div>`).join('')}
+                </div></div></div>`;
         }
 
-        // Build General Benchmarks HTML
-        let generalHTML = '<div class="general-grid">';
-        Object.entries(m.general).forEach(([name, score]) => {
-            generalHTML += `
-                <div class="subject-stat">
-                    <span class="subject-name">${name}</span>
-                    <span class="subject-val">${(score*100).toFixed(1)}%</span>
-                </div>`;
+        let genHTML = '<div class="general-grid">';
+        Object.entries(m.general).forEach(([n, s]) => {
+            genHTML += `<div class="subject-stat"><span class="subject-name">${n}</span><span class="subject-val">${(s*100).toFixed(1)}%</span></div>`;
         });
-        generalHTML += '</div>';
+        genHTML += '</div>';
 
-        container.innerHTML += `
-            <div class="model-card shadow-sm">
-                <div class="model-trigger" data-bs-toggle="collapse" data-bs-target="#m-exp-${mIdx}">
-                    <div class="fw-bold text-dark">${m.name}</div>
-                    <div class="text-center text-primary fw-bold">${(m.overall*100).toFixed(1)}%</div>
-                    <div class="text-center fw-bold text-secondary">${(m.tmmlu_avg*100).toFixed(1)}%</div>
-                    <div class="text-end text-muted">▾</div>
-                </div>
-                <div id="m-exp-${mIdx}" class="collapse p-4 border-top bg-light">
-                    <div class="section-title">General Benchmarks</div>
-                    ${Object.keys(m.general).length ? generalHTML : '<p class="text-muted small px-2">No general benchmark data found.</p>'}
-                    
-                    <div class="section-title">TMMLU+ Disciplines</div>
-                    ${discHTML || '<p class="text-muted small px-2">No discipline data found.</p>'}
-                </div>
-            </div>`;
+        container.innerHTML += `<div class="model-card shadow-sm">
+            <div class="model-trigger" data-bs-toggle="collapse" data-bs-target="#m-exp-${mIdx}">
+                <div class="fw-bold">${m.name}</div>
+                <div class="text-center text-primary fw-bold">${(m.overall*100).toFixed(1)}%</div>
+                <div class="text-center fw-bold text-secondary">${(m.tmmlu_avg*100).toFixed(1)}%</div>
+                <div class="text-end text-muted">▾</div>
+            </div>
+            <div id="m-exp-${mIdx}" class="collapse p-4 border-top bg-light">
+                <div class="section-title">General Benchmarks</div>
+                ${Object.keys(m.general).length ? genHTML : '<p class="text-muted small px-2">No general data found.</p>'}
+                <div class="section-title">TMMLU+ Disciplines</div>
+                ${discHTML || '<p class="text-muted small px-2">No discipline data found.</p>'}
+            </div></div>`;
     });
-    draw(data);
 }
 
 function draw(data) {
     const cats = Object.keys(DISCIPLINE_MAP);
-    const radarTraces = data.slice(0,5).map(m => ({
+    const top5 = data.slice(0, 5);
+    const radarTraces = top5.map(m => ({
         type: 'scatterpolar', r: cats.map(c => {
             const d = m.disciplines[c];
             return d ? (d.reduce((a,b)=>a+b.score,0)/d.length) : 0;
-        }),
-        theta: cats, fill: 'toself', name: m.name
+        }), theta: cats, fill: 'toself', name: m.name
     }));
     Plotly.newPlot('radar-chart', radarTraces, { polar: { radialaxis: { range: [0, 1], tickformat: ',.0%' } }, margin: { t: 50, b: 50, l: 50, r: 50 }, legend: { orientation: 'h', y: -0.2 } });
 
-    const barTraces = data.slice(0,5).map(m => ({
+    const barTraces = top5.map(m => ({
         x: cats, y: cats.map(c => {
             const d = m.disciplines[c];
             return d ? (d.reduce((a,b)=>a+b.score,0)/d.length) : 0;
-        }),
-        type: 'bar', name: m.name
+        }), type: 'bar', name: m.name
     }));
     Plotly.newPlot('bar-chart', barTraces, { barmode: 'group', yaxis: { range: [0, 1], tickformat: ',.0%' }, legend: { orientation: 'h', y: -0.4 } });
 }
+
+// Search Logic
+document.getElementById('modelSearch').addEventListener('input', function(e) {
+    const term = e.target.value.toLowerCase();
+    const filtered = globalData.filter(m => m.name.toLowerCase().includes(term));
+    render(filtered);
+});
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
