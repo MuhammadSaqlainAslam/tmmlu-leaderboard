@@ -16,12 +16,10 @@
         .hero { background: white; border-bottom: 1px solid #e2e8f0; padding: 60px 0; margin-bottom: 30px; }
         .chart-container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; min-height: 480px; }
         
-        /* Search Bar */
         .search-wrapper { max-width: 600px; margin: -30px auto 40px auto; position: relative; z-index: 10; }
         .form-control-lg { border-radius: 12px; border: 1px solid #e2e8f0; padding-left: 45px; font-size: 1rem; }
         .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
 
-        /* Table Styling */
         .lb-header { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; font-weight: 700; background: #1e293b; color: white; border-radius: 12px; margin-bottom: 12px; }
         .model-card { background: white; border-radius: 12px; margin-bottom: 10px; border: 1px solid #e2e8f0; overflow: hidden; transition: 0.2s; }
         .model-card:hover { border-color: var(--primary); }
@@ -58,7 +56,7 @@
             <div class="chart-container shadow-sm">
                 <div id="radar-chart"></div>
                 <p class="chart-caption">
-                    <strong>Figure 1: Discipline Radar Map.</strong> This visualization displays the relative strengths of the Top 5 models across five major academic disciplines. A larger area indicates a more balanced and versatile model.
+                    <strong>Figure 1: Discipline Radar Map.</strong> This visualization displays the relative strengths of the leading models across five major academic disciplines. A larger area indicates a more balanced and versatile model.
                 </p>
             </div>
         </div>
@@ -66,7 +64,7 @@
             <div class="chart-container shadow-sm">
                 <div id="bar-chart"></div>
                 <p class="chart-caption">
-                    <strong>Figure 2: Category Accuracy Comparison.</strong> This chart compares the mean performance of the Top 5 models across specialized groups. It provides insights into which models lead in specific professional fields.
+                    <strong>Figure 2: Category Accuracy Comparison.</strong> This chart compares the mean performance of evaluated models across specialized groups, providing insights into domain-specific leadership.
                 </p>
             </div>
         </div>
@@ -192,28 +190,32 @@ function render(data) {
 
 function draw(data) {
     const cats = Object.keys(DISCIPLINE_MAP);
-    const top5 = data.slice(0, 5);
-    const radarTraces = top5.map(m => ({
+    const topCount = Math.min(data.length, 5); // Use up to 5 models
+    const displayData = data.slice(0, topCount);
+    
+    const radarTraces = displayData.map(m => ({
         type: 'scatterpolar', r: cats.map(c => {
             const d = m.disciplines[c];
             return d ? (d.reduce((a,b)=>a+b.score,0)/d.length) : 0;
         }), theta: cats, fill: 'toself', name: m.name
     }));
+    
     Plotly.newPlot('radar-chart', radarTraces, { 
-        title: { text: 'Top 5 Models: Discipline Radar', font: { weight: 700 } },
+        title: { text: `Top ${topCount} Models: Discipline Radar`, font: { weight: 700 } },
         polar: { radialaxis: { range: [0, 1], tickformat: ',.0%' } }, 
         margin: { t: 80, b: 50, l: 50, r: 50 }, 
         legend: { orientation: 'h', y: -0.1 } 
     });
 
-    const barTraces = top5.map(m => ({
+    const barTraces = displayData.map(m => ({
         x: cats, y: cats.map(c => {
             const d = m.disciplines[c];
             return d ? (d.reduce((a,b)=>a+b.score,0)/d.length) : 0;
         }), type: 'bar', name: m.name
     }));
+    
     Plotly.newPlot('bar-chart', barTraces, { 
-        title: { text: 'Top 5 Models: Category Performance', font: { weight: 700 } },
+        title: { text: `Top ${topCount} Models: Category Performance`, font: { weight: 700 } },
         barmode: 'group', 
         yaxis: { range: [0, 1], tickformat: ',.0%' }, 
         legend: { orientation: 'h', y: -0.3 } 
