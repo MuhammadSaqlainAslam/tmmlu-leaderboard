@@ -7,39 +7,29 @@
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; --science: #0ea5e9; --business: #8b5cf6; --health: #ef4444; --humanities: #f59e0b; --tech: #10b981; }
+        :root { --primary: #2563eb; --bg: #f8fafc; }
         body { background-color: var(--bg); font-family: 'Inter', system-ui, sans-serif; color: #1e293b; padding-bottom: 50px; }
-        
         .hero { background: white; border-bottom: 1px solid #e2e8f0; padding: 50px 0; margin-bottom: 30px; }
-        .chart-container { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        
-        /* Leaderboard Styling */
+        .chart-container { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; min-height: 400px; }
         .lb-header { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; font-weight: 700; background: #1e293b; color: white; border-radius: 12px; margin-bottom: 10px; }
         .model-card { background: white; border-radius: 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; overflow: hidden; }
-        .model-trigger { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; cursor: pointer; align-items: center; transition: 0.2s; }
-        .model-trigger:hover { background: #f1f5f9; }
-        
-        /* Nested Category Accordion */
+        .model-trigger { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; cursor: pointer; align-items: center; }
         .category-item { border: 1px solid #f1f5f9; border-radius: 8px; margin-bottom: 5px; }
-        .category-trigger { padding: 10px 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #fafafa; font-weight: 600; font-size: 0.95rem; }
-        .category-trigger:hover { background: #f1f5f9; }
-        
-        .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 15px; background: white; }
+        .category-trigger { padding: 10px 15px; cursor: pointer; display: flex; justify-content: space-between; background: #fafafa; font-weight: 600; }
+        .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; padding: 15px; }
         .subject-stat { border-left: 3px solid #cbd5e1; padding-left: 10px; }
-        .subject-name { font-size: 0.8rem; color: #64748b; display: block; text-transform: capitalize; }
-        .subject-val { font-weight: 700; font-size: 0.9rem; }
-
-        .score-main { font-weight: 800; color: var(--primary); }
+        .subject-name { font-size: 0.75rem; color: #64748b; display: block; }
+        .subject-val { font-weight: 700; font-size: 0.85rem; }
     </style>
 </head>
 <body>
 
 <div class="hero">
     <div class="container text-center">
-        <h1 class="fw-bold">TMMLU+ Leaderboard</h1>
+        <h1 class="fw-bold">🇹🇼 TMMLU+ Leaderboard</h1>
         <p class="text-muted">Traditional Chinese Massive Multitask Language Understanding</p>
     </div>
 </div>
@@ -50,17 +40,21 @@
         <div class="col-lg-6"><div class="chart-container"><div id="bar-chart"></div></div></div>
     </div>
 
-    <div class="lb-header shadow-sm">
+    <div class="lb-header">
         <div>Model</div>
         <div class="text-center">Overall</div>
         <div class="text-center">TMMLU+ Avg</div>
         <div></div>
     </div>
     <div id="leaderboard-container"></div>
+    <div id="error-msg" class="text-danger text-center mt-4"></div>
 </div>
 
 <script>
-const CSV_PATH = 'results/benchmark.csv';
+/** * CRITICAL FIX: Using the RAW URL to ensure GitHub Pages can find the file
+ * even if it is outside the /docs folder.
+ */
+const CSV_PATH = 'https://raw.githubusercontent.com/MuhammadSaqlainAslam/tmmlu-leaderboard/main/results/benchmark.csv';
 
 const DISCIPLINE_MAP = {
     "Science": ["fire_science", "secondary_physics", "advance_chemistry", "organic_chemistry", "physics", "junior_science_exam", "junior_chemistry", "engineering_math", "statistics_and_machine_learning", "tve_mathematics", "tve_natural_sciences"],
@@ -71,24 +65,33 @@ const DISCIPLINE_MAP = {
 };
 
 Papa.parse(CSV_PATH, {
-    download: true, header: true, dynamicTyping: true,
-    complete: function(res) { process(res.data); }
+    download: true,
+    header: true,
+    dynamicTyping: true,
+    complete: function(res) {
+        if(res.data && res.data.length > 0) {
+            process(res.data);
+        } else {
+            document.getElementById('error-msg').innerText = "Data loaded but seems empty.";
+        }
+    },
+    error: function(err) {
+        document.getElementById('error-msg').innerText = "Error loading CSV: " + err;
+    }
 });
 
 function process(data) {
     const models = Object.keys(data[0]).filter(k => k !== 'task_name' && k !== 'metric');
     let results = models.map(mName => {
         let mData = { name: mName, disciplines: {}, allScores: [] };
-        
         data.forEach(row => {
             const score = row[mName];
-            if (score === null || isNaN(score)) return;
+            if (score === null || isNaN(score) || row.task_name === null) return;
             if (!row.metric.includes('accuracy') && !row.metric.includes('exact_match')) return;
 
             mData.allScores.push(score);
-            
             for (let disc in DISCIPLINE_MAP) {
-                if (DISCIPLINE_MAP[disc].some(sub => row.task_name.includes(sub))) {
+                if (DISCIPLINE_MAP[disc].some(sub => row.task_name.toLowerCase().includes(sub))) {
                     if (!mData.disciplines[disc]) mData.disciplines[disc] = [];
                     mData.disciplines[disc].push({ 
                         subject: row.task_name.split('-').pop().replace(/_/g, ' '), 
@@ -97,29 +100,27 @@ function process(data) {
                 }
             }
         });
-
-        mData.overall = mData.allScores.reduce((a,b)=>a+b,0) / mData.allScores.length;
+        mData.overall = mData.allScores.length ? (mData.allScores.reduce((a,b)=>a+b,0) / mData.allScores.length) : 0;
         let dAvgList = Object.values(mData.disciplines).map(arr => arr.reduce((a,b)=>a+b.score,0)/arr.length);
-        mData.tmmlu_avg = dAvgList.reduce((a,b)=>a+b,0) / dAvgList.length;
+        mData.tmmlu_avg = dAvgList.length ? (dAvgList.reduce((a,b)=>a+b,0) / dAvgList.length) : 0;
         return mData;
     }).sort((a,b) => b.overall - a.overall);
-
     render(results);
 }
 
 function render(data) {
     const container = document.getElementById('leaderboard-container');
+    container.innerHTML = "";
     data.forEach((m, mIdx) => {
         let discHTML = '';
         for (let disc in m.disciplines) {
             const avg = m.disciplines[disc].reduce((a,b)=>a+b.score,0) / m.disciplines[disc].length;
-            const subId = `details-${mIdx}-${disc.replace(/\s/g, '')}`;
-            
+            const subId = `details-${mIdx}-${disc.replace(/[^a-zA-Z]/g, '')}`;
             discHTML += `
                 <div class="category-item">
                     <div class="category-trigger" data-bs-toggle="collapse" data-bs-target="#${subId}">
                         <span>${disc} <small class="text-muted ms-2">(${(avg*100).toFixed(1)}%)</small></span>
-                        <small>Details ▾</small>
+                        <small>Subjects ▾</small>
                     </div>
                     <div id="${subId}" class="collapse">
                         <div class="subject-grid">
@@ -133,12 +134,11 @@ function render(data) {
                     </div>
                 </div>`;
         }
-
         container.innerHTML += `
             <div class="model-card shadow-sm">
                 <div class="model-trigger" data-bs-toggle="collapse" data-bs-target="#model-expand-${mIdx}">
                     <div class="fw-bold">${m.name}</div>
-                    <div class="text-center score-main">${(m.overall*100).toFixed(1)}%</div>
+                    <div class="text-center text-primary fw-bold">${(m.overall*100).toFixed(1)}%</div>
                     <div class="text-center fw-bold">${(m.tmmlu_avg*100).toFixed(1)}%</div>
                     <div class="text-end text-muted">▾</div>
                 </div>
@@ -153,7 +153,7 @@ function render(data) {
 
 function draw(data) {
     const cats = Object.keys(DISCIPLINE_MAP);
-    const radarTraces = data.map(m => ({
+    const radarTraces = data.slice(0, 5).map(m => ({
         type: 'scatterpolar', name: m.name, fill: 'toself',
         r: cats.map(c => {
             const d = m.disciplines[c];
@@ -161,9 +161,9 @@ function draw(data) {
         }),
         theta: cats
     }));
-    Plotly.newPlot('radar-chart', radarTraces, { title: 'Discipline Radar', polar: { radialaxis: { range: [0, 1] } }, margin: { t: 40, b: 40, l: 40, r: 40 }, legend: { orientation: 'h', y: -0.2 } });
+    Plotly.newPlot('radar-chart', radarTraces, { title: 'Top 5 Models: Discipline Radar', polar: { radialaxis: { range: [0, 1] } }, margin: { t: 60, b: 40, l: 40, r: 40 }, legend: { orientation: 'h', y: -0.2 } });
 
-    const barTraces = data.map(m => ({
+    const barTraces = data.slice(0, 5).map(m => ({
         type: 'bar', name: m.name,
         x: cats,
         y: cats.map(c => {
@@ -171,7 +171,7 @@ function draw(data) {
             return d ? (d.reduce((a,b)=>a+b.score,0)/d.length) : 0;
         })
     }));
-    Plotly.newPlot('bar-chart', barTraces, { title: 'Category Comparison', barmode: 'group', yaxis: { range: [0, 1], tickformat: ',.0%' }, margin: { t: 40, b: 40, l: 50, r: 20 }, legend: { orientation: 'h', y: -0.4 } });
+    Plotly.newPlot('bar-chart', barTraces, { title: 'Top 5 Models: Category Comparison', barmode: 'group', yaxis: { range: [0, 1], tickformat: ',.0%' }, margin: { t: 60, b: 40, l: 50, r: 20 }, legend: { orientation: 'h', y: -0.4 } });
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
