@@ -16,10 +16,13 @@
         .hero { background: white; border-bottom: 1px solid #e2e8f0; padding: 60px 0; margin-bottom: 30px; }
         .chart-container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; min-height: 480px; }
         
-        .search-wrapper { max-width: 600px; margin: -30px auto 40px auto; position: relative; z-index: 10; }
+        /* Search and Submit Section */
+        .search-wrapper { max-width: 600px; margin: -30px auto 20px auto; position: relative; z-index: 10; }
         .form-control-lg { border-radius: 12px; border: 1px solid #e2e8f0; padding-left: 45px; font-size: 1rem; }
         .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+        .btn-submit { border-radius: 10px; padding: 10px 20px; transition: 0.3s; }
 
+        /* Table Styling */
         .lb-header { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; font-weight: 700; background: #1e293b; color: white; border-radius: 12px; margin-bottom: 12px; }
         .model-card { background: white; border-radius: 12px; margin-bottom: 10px; border: 1px solid #e2e8f0; overflow: hidden; transition: 0.2s; }
         .model-card:hover { border-color: var(--primary); }
@@ -50,12 +53,18 @@
         <span class="search-icon">🔍</span>
         <input type="text" id="modelSearch" class="form-control form-control-lg" placeholder="Search models by name (e.g., FoxBrain, GPT-4)...">
     </div>
+    <div class="text-center mb-5">
+        <a href="https://github.com/MuhammadSaqlainAslam/tmmlu-leaderboard/issues/new?assignees=&labels=model+submission&template=model_submission.md&title=%5BMODEL+SUBMISSION%5D+%3CModel+Name%3E" 
+           target="_blank" class="btn btn-outline-primary btn-submit fw-bold shadow-sm">
+           🚀 Submit Your Model Results
+        </a>
+    </div>
 
     <div class="row">
         <div class="col-lg-6">
             <div class="chart-container shadow-sm">
                 <div id="radar-chart"></div>
-                <p class="chart-caption">
+                <p class="chart-caption" id="radar-caption">
                     <strong>Figure 1: Discipline Radar Map.</strong> This visualization displays the relative strengths of the leading models across five major academic disciplines. A larger area indicates a more balanced and versatile model.
                 </p>
             </div>
@@ -63,7 +72,7 @@
         <div class="col-lg-6">
             <div class="chart-container shadow-sm">
                 <div id="bar-chart"></div>
-                <p class="chart-caption">
+                <p class="chart-caption" id="bar-caption">
                     <strong>Figure 2: Category Accuracy Comparison.</strong> This chart compares the mean performance of evaluated models across specialized groups, providing insights into domain-specific leadership.
                 </p>
             </div>
@@ -190,9 +199,13 @@ function render(data) {
 
 function draw(data) {
     const cats = Object.keys(DISCIPLINE_MAP);
-    const topCount = Math.min(data.length, 5); // Use up to 5 models
+    const topCount = Math.min(data.length, 5);
     const displayData = data.slice(0, topCount);
     
+    // Update Captions
+    document.getElementById('radar-caption').innerHTML = `<strong>Figure 1: Discipline Radar Map.</strong> This visualization displays the relative strengths of the <strong>Top ${topCount}</strong> models across five major academic disciplines.`;
+    document.getElementById('bar-caption').innerHTML = `<strong>Figure 2: Category Accuracy Comparison.</strong> This chart compares the mean performance of the <strong>Top ${topCount}</strong> evaluated models across specialized groups.`;
+
     const radarTraces = displayData.map(m => ({
         type: 'scatterpolar', r: cats.map(c => {
             const d = m.disciplines[c];
