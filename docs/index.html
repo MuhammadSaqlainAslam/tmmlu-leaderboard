@@ -10,182 +10,170 @@
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     
     <style>
-        :root { --primary: #2563eb; --secondary: #10b981; --bg: #f8fafc; }
-        body { background-color: var(--bg); font-family: 'Inter', -apple-system, sans-serif; color: #1e293b; }
+        :root { --primary: #2563eb; --bg: #f8fafc; --science: #0ea5e9; --business: #8b5cf6; --health: #ef4444; --humanities: #f59e0b; --tech: #10b981; }
+        body { background-color: var(--bg); font-family: 'Inter', system-ui, sans-serif; color: #1e293b; padding-bottom: 50px; }
         
-        .hero { background: white; border-bottom: 1px solid #e2e8f0; padding: 60px 0; margin-bottom: 40px; }
-        .chart-container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 30px; min-height: 450px; }
+        .hero { background: white; border-bottom: 1px solid #e2e8f0; padding: 50px 0; margin-bottom: 30px; }
+        .chart-container { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         
-        .lb-card { background: white; border-radius: 12px; margin-bottom: 12px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: 0.2s; }
-        .lb-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        /* Leaderboard Styling */
+        .lb-header { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; font-weight: 700; background: #1e293b; color: white; border-radius: 12px; margin-bottom: 10px; }
+        .model-card { background: white; border-radius: 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .model-trigger { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; cursor: pointer; align-items: center; transition: 0.2s; }
+        .model-trigger:hover { background: #f1f5f9; }
         
-        .row-trigger { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 18px 25px; cursor: pointer; align-items: center; }
-        .lb-header { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 12px 25px; font-weight: 700; background: #334155; color: white; border-radius: 12px; margin-bottom: 15px; }
+        /* Nested Category Accordion */
+        .category-item { border: 1px solid #f1f5f9; border-radius: 8px; margin-bottom: 5px; }
+        .category-trigger { padding: 10px 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #fafafa; font-weight: 600; font-size: 0.95rem; }
+        .category-trigger:hover { background: #f1f5f9; }
         
-        .score-main { font-weight: 800; color: var(--primary); font-size: 1.1rem; }
-        .subject-tag { font-size: 0.75rem; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; margin: 2px; display: inline-block; }
+        .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 15px; background: white; }
+        .subject-stat { border-left: 3px solid #cbd5e1; padding-left: 10px; }
+        .subject-name { font-size: 0.8rem; color: #64748b; display: block; text-transform: capitalize; }
+        .subject-val { font-weight: 700; font-size: 0.9rem; }
+
+        .score-main { font-weight: 800; color: var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="hero">
     <div class="container text-center">
-        <h1 class="display-4 fw-bold">📊 TMMLU+ Leaderboard</h1>
-        <p class="text-muted">Evaluating Massive Multitask Language Understanding in Traditional Chinese</p>
+        <h1 class="fw-bold">TMMLU+ Leaderboard</h1>
+        <p class="text-muted">Traditional Chinese Massive Multitask Language Understanding</p>
     </div>
 </div>
 
 <div class="container">
-    <div class="row">
-        <div class="col-lg-6">
-            <div class="chart-container">
-                <h5 class="text-center fw-bold">Discipline Comparison (Radar)</h5>
-                <div id="radar-chart"></div>
-            </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="chart-container">
-                <h5 class="text-center fw-bold">Average by Category (Bar)</h5>
-                <div id="bar-chart"></div>
-            </div>
-        </div>
+    <div class="row mb-4">
+        <div class="col-lg-6"><div class="chart-container"><div id="radar-chart"></div></div></div>
+        <div class="col-lg-6"><div class="chart-container"><div id="bar-chart"></div></div></div>
     </div>
 
-    <h3 class="fw-bold mb-4 mt-4">🏆 Model Rankings</h3>
-    <div class="lb-header">
-        <div>Model Name</div>
+    <div class="lb-header shadow-sm">
+        <div>Model</div>
         <div class="text-center">Overall</div>
         <div class="text-center">TMMLU+ Avg</div>
         <div></div>
     </div>
-    
-    <div id="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status"></div>
-    </div>
-    <div class="accordion" id="leaderboard"></div>
+    <div id="leaderboard-container"></div>
 </div>
 
 <script>
-// Configuration
-const CSV_PATH = 'https://raw.githubusercontent.com/MuhammadSaqlainAslam/tmmlu-leaderboard/main/results/benchmark.csv';
+const CSV_PATH = 'results/benchmark.csv';
 
-const CATEGORIES = {
+const DISCIPLINE_MAP = {
     "Science": ["fire_science", "secondary_physics", "advance_chemistry", "organic_chemistry", "physics", "junior_science_exam", "junior_chemistry", "engineering_math", "statistics_and_machine_learning", "tve_mathematics", "tve_natural_sciences"],
     "Business": ["auditing", "financial_analysis", "insurance_studies", "business_management", "marketing_management", "management_accounting", "finance_banking", "taxation", "real_estate", "anti_money_laundering", "trust_practice", "official_document_management"],
-    "Health & Med": ["clinical_psychology", "pharmacy", "veterinary_pathology", "dentistry", "pharmacology", "veterinary_pharmacology", "basic_medical_science", "occupational_therapy_for_psychological_disorders", "optometry", "traditional_chinese_medicine_clinical_medicine"],
+    "Health & Medicine": ["clinical_psychology", "pharmacy", "veterinary_pathology", "dentistry", "pharmacology", "veterinary_pharmacology", "basic_medical_science", "occupational_therapy_for_psychological_disorders", "optometry", "traditional_chinese_medicine_clinical_medicine"],
     "Humanities": ["logic_reasoning", "education", "educational_psychology", "human_behavior", "geography_of_taiwan", "jce_humanities", "chinese_language_and_literature", "junior_chinese_exam", "politic_science", "three_principles_of_people", "national_protection", "general_principles_of_law", "administrative_law", "introduction_to_law", "taiwanese_hokkien", "music", "education_(profession_level)"],
-    "Tech & Eng": ["computer_science", "mechanical", "nautical_science", "technical", "agriculture", "culinary_skills", "tve_design"]
+    "Tech & Engineering": ["computer_science", "mechanical", "nautical_science", "technical", "agriculture", "culinary_skills", "tve_design"]
 };
 
-// Data Processing
 Papa.parse(CSV_PATH, {
-    download: true,
-    header: true,
-    dynamicTyping: true,
-    complete: function(results) {
-        processData(results.data);
-    }
+    download: true, header: true, dynamicTyping: true,
+    complete: function(res) { process(res.data); }
 });
 
-function processData(data) {
+function process(data) {
     const models = Object.keys(data[0]).filter(k => k !== 'task_name' && k !== 'metric');
-    let processed = models.map(name => {
-        let scores = { name, categoryScores: {}, overallSum: 0, count: 0 };
+    let results = models.map(mName => {
+        let mData = { name: mName, disciplines: {}, allScores: [] };
         
         data.forEach(row => {
-            const val = row[name];
-            if (val === null || val === undefined || isNaN(val)) return;
-            if (row.metric !== 'accuracy' && row.metric !== 'prefix_exact_match') return;
+            const score = row[mName];
+            if (score === null || isNaN(score)) return;
+            if (!row.metric.includes('accuracy') && !row.metric.includes('exact_match')) return;
 
-            scores.overallSum += val;
-            scores.count++;
-
-            // Check categories
-            for (let cat in CATEGORIES) {
-                if (CATEGORIES[cat].some(sub => row.task_name.includes(sub))) {
-                    if (!scores.categoryScores[cat]) scores.categoryScores[cat] = [];
-                    scores.categoryScores[cat].push(val);
+            mData.allScores.push(score);
+            
+            for (let disc in DISCIPLINE_MAP) {
+                if (DISCIPLINE_MAP[disc].some(sub => row.task_name.includes(sub))) {
+                    if (!mData.disciplines[disc]) mData.disciplines[disc] = [];
+                    mData.disciplines[disc].push({ 
+                        subject: row.task_name.split('-').pop().replace(/_/g, ' '), 
+                        score: score 
+                    });
                 }
             }
         });
 
-        // Compute Averages
-        for (let cat in scores.categoryScores) {
-            let arr = scores.categoryScores[cat];
-            scores.categoryScores[cat] = arr.reduce((a,b)=>a+b,0) / arr.length;
-        }
-        scores.overall = scores.overallSum / scores.count;
-        scores.tmmlu_avg = Object.values(scores.categoryScores).reduce((a,b)=>a+b,0) / Object.keys(scores.categoryScores).length;
-        
-        return scores;
-    });
+        mData.overall = mData.allScores.reduce((a,b)=>a+b,0) / mData.allScores.length;
+        let dAvgList = Object.values(mData.disciplines).map(arr => arr.reduce((a,b)=>a+b.score,0)/arr.length);
+        mData.tmmlu_avg = dAvgList.reduce((a,b)=>a+b,0) / dAvgList.length;
+        return mData;
+    }).sort((a,b) => b.overall - a.overall);
 
-    processed.sort((a,b) => b.overall - a.overall);
-    renderUI(processed);
+    render(results);
 }
 
-function renderUI(data) {
-    document.getElementById('loading').style.display = 'none';
-    const container = document.getElementById('leaderboard');
-    
-    data.forEach((m, i) => {
-        const html = `
-            <div class="lb-card">
-                <div class="row-trigger" data-bs-toggle="collapse" data-bs-target="#details-${i}">
-                    <div class="fw-bold">${m.name}</div>
-                    <div class="text-center score-main">${(m.overall * 100).toFixed(1)}%</div>
-                    <div class="text-center">${(m.tmmlu_avg * 100).toFixed(1)}%</div>
-                    <div class="text-end text-muted">▼</div>
-                </div>
-                <div id="details-${i}" class="collapse p-4 border-top" data-bs-parent="#leaderboard">
-                    <div class="row">
-                        ${Object.entries(m.categoryScores).map(([cat, score]) => `
-                            <div class="col-6 col-md-4 mb-3">
-                                <small class="text-muted d-block">${cat}</small>
-                                <span class="fw-bold">${(score*100).toFixed(1)}%</span>
-                            </div>
-                        `).join('')}
+function render(data) {
+    const container = document.getElementById('leaderboard-container');
+    data.forEach((m, mIdx) => {
+        let discHTML = '';
+        for (let disc in m.disciplines) {
+            const avg = m.disciplines[disc].reduce((a,b)=>a+b.score,0) / m.disciplines[disc].length;
+            const subId = `details-${mIdx}-${disc.replace(/\s/g, '')}`;
+            
+            discHTML += `
+                <div class="category-item">
+                    <div class="category-trigger" data-bs-toggle="collapse" data-bs-target="#${subId}">
+                        <span>${disc} <small class="text-muted ms-2">(${(avg*100).toFixed(1)}%)</small></span>
+                        <small>Details ▾</small>
                     </div>
+                    <div id="${subId}" class="collapse">
+                        <div class="subject-grid">
+                            ${m.disciplines[disc].map(s => `
+                                <div class="subject-stat">
+                                    <span class="subject-name">${s.subject}</span>
+                                    <span class="subject-val">${(s.score*100).toFixed(1)}%</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        container.innerHTML += `
+            <div class="model-card shadow-sm">
+                <div class="model-trigger" data-bs-toggle="collapse" data-bs-target="#model-expand-${mIdx}">
+                    <div class="fw-bold">${m.name}</div>
+                    <div class="text-center score-main">${(m.overall*100).toFixed(1)}%</div>
+                    <div class="text-center fw-bold">${(m.tmmlu_avg*100).toFixed(1)}%</div>
+                    <div class="text-end text-muted">▾</div>
+                </div>
+                <div id="model-expand-${mIdx}" class="collapse p-3 border-top bg-light">
+                    <h6 class="mb-3 fw-bold text-secondary">Discipline Breakdown</h6>
+                    ${discHTML}
                 </div>
             </div>`;
-        container.insertAdjacentHTML('beforeend', html);
     });
-
-    drawCharts(data);
+    draw(data);
 }
 
-function drawCharts(data) {
-    const cats = Object.keys(CATEGORIES);
-    
-    // Radar
+function draw(data) {
+    const cats = Object.keys(DISCIPLINE_MAP);
     const radarTraces = data.map(m => ({
-        type: 'scatterpolar',
-        r: cats.map(c => m.categoryScores[c] || 0),
-        theta: cats,
-        fill: 'toself',
-        name: m.name
+        type: 'scatterpolar', name: m.name, fill: 'toself',
+        r: cats.map(c => {
+            const d = m.disciplines[c];
+            return d ? (d.reduce((a,b)=>a+b.score,0)/d.length) : 0;
+        }),
+        theta: cats
     }));
-    Plotly.newPlot('radar-chart', radarTraces, { 
-        polar: { radialaxis: { visible: true, range: [0, 1] } },
-        margin: { l: 40, r: 40, t: 20, b: 20 },
-        legend: { orientation: 'h' }
-    });
+    Plotly.newPlot('radar-chart', radarTraces, { title: 'Discipline Radar', polar: { radialaxis: { range: [0, 1] } }, margin: { t: 40, b: 40, l: 40, r: 40 }, legend: { orientation: 'h', y: -0.2 } });
 
-    // Bar
     const barTraces = data.map(m => ({
+        type: 'bar', name: m.name,
         x: cats,
-        y: cats.map(c => m.categoryScores[c] || 0),
-        name: m.name,
-        type: 'bar'
+        y: cats.map(c => {
+            const d = m.disciplines[c];
+            return d ? (d.reduce((a,b)=>a+b.score,0)/d.length) : 0;
+        })
     }));
-    Plotly.newPlot('bar-chart', barTraces, { 
-        barmode: 'group',
-        yaxis: { range: [0, 1], tickformat: ',.0%' },
-        legend: { orientation: 'h' }
-    });
+    Plotly.newPlot('bar-chart', barTraces, { title: 'Category Comparison', barmode: 'group', yaxis: { range: [0, 1], tickformat: ',.0%' }, margin: { t: 40, b: 40, l: 50, r: 20 }, legend: { orientation: 'h', y: -0.4 } });
 }
 </script>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
