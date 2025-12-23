@@ -1,295 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TMMLU+ Leaderboard</title>
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 30px;
-            background: #fafafa;
-        }
-
-        h1 {
-            text-align: center;
-        }
-
-        h2 {
-            margin-top: 40px;
-            border-bottom: 2px solid #ccc;
-            padding-bottom: 5px;
-        }
-
-        /* Leaderboard Table Styles */
-        #leaderboard-table {
-            border-collapse: collapse;
-            width: 80%; /* Adjusted width */
-            margin: 20px auto 40px auto; /* Centered with margin */
-            background: white;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Subtle shadow */
-            border-radius: 8px;
-        }
-
-        #leaderboard-table th, #leaderboard-table td {
-            border: 1px solid #ddd;
-            padding: 12px;
-            text-align: center;
-        }
-
-        #leaderboard-table th {
-            background: #e9e9e9;
-            font-weight: bold;
-        }
-
-        #leaderboard-table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        /* Chart Container Styles */
-        .chart-container {
-            width: 90%;
-            margin: 20px auto;
-            padding: 20px;
-            background: white;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            border-radius: 8px;
-        }
-
-        /* Accordion Styles */
-        #tmmlu-accordion {
-            width: 80%;
-            margin: 20px auto;
-        }
-
-        #tmmlu-accordion details {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            margin-bottom: 10px;
-        }
+        :root { --primary: #2563eb; --secondary: #10b981; --bg: #f8fafc; }
+        body { background-color: var(--bg); font-family: 'Inter', -apple-system, sans-serif; color: #1e293b; }
         
-        #tmmlu-accordion summary {
-            font-weight: bold;
-            cursor: pointer;
-            padding: 10px;
-            background-color: #f7f7f7;
-            border-radius: 6px;
-        }
+        .hero { background: white; border-bottom: 1px solid #e2e8f0; padding: 60px 0; margin-bottom: 40px; }
+        .chart-container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 30px; min-height: 450px; }
         
-        #tmmlu-accordion details[open] summary {
-            border-bottom: 1px solid #ddd;
-        }
-
-        .sub {
-            padding: 10px 0 5px 20px;
-            border-left: 3px solid #007bff; /* Highlight for sub-disciplines */
-            margin: 10px 0 5px 10px;
-            background-color: #fcfdff;
-        }
+        .lb-card { background: white; border-radius: 12px; margin-bottom: 12px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: 0.2s; }
+        .lb-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
         
-        .sub ul {
-            list-style-type: none;
-            padding-left: 0;
-            margin-top: 5px;
-        }
+        .row-trigger { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 18px 25px; cursor: pointer; align-items: center; }
+        .lb-header { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 12px 25px; font-weight: 700; background: #334155; color: white; border-radius: 12px; margin-bottom: 15px; }
         
-        .sub li {
-            padding: 3px 0;
-            font-size: 0.9em;
-        }
+        .score-main { font-weight: 800; color: var(--primary); font-size: 1.1rem; }
+        .subject-tag { font-size: 0.75rem; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; margin: 2px; display: inline-block; }
     </style>
 </head>
-
 <body>
-    <h1>TMMLU+ Leaderboard</h1>
 
-    <h2>📊 Model Rankings</h2>
-    <table id="leaderboard-table">
-        </table>
+<div class="hero">
+    <div class="container text-center">
+        <h1 class="display-4 fw-bold">📊 TMMLU+ Leaderboard</h1>
+        <p class="text-muted">Evaluating Massive Multitask Language Understanding in Traditional Chinese</p>
+    </div>
+</div>
 
-    <h2>🌐 TMMLU+ Category Radar</h2>
-    <div class="chart-container" id="tmmlu-radar">
+<div class="container">
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <h5 class="text-center fw-bold">Discipline Comparison (Radar)</h5>
+                <div id="radar-chart"></div>
+            </div>
         </div>
-
-    <h2>📈 TMMLU+ Category Bar Chart</h2>
-    <div class="chart-container" id="tmmlu-bar">
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <h5 class="text-center fw-bold">Average by Category (Bar)</h5>
+                <div id="bar-chart"></div>
+            </div>
         </div>
+    </div>
+
+    <h3 class="fw-bold mb-4 mt-4">🏆 Model Rankings</h3>
+    <div class="lb-header">
+        <div>Model Name</div>
+        <div class="text-center">Overall</div>
+        <div class="text-center">TMMLU+ Avg</div>
+        <div></div>
+    </div>
     
-    <h2>📑 TMMLU+ Discipline Radar Breakdown</h2>
-    <div id="tmmlu-accordion">
-        </div>
+    <div id="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+    <div class="accordion" id="leaderboard"></div>
+</div>
 
+<script>
+// Configuration
+const CSV_PATH = 'https://raw.githubusercontent.com/MuhammadSaqlainAslam/tmmlu-leaderboard/main/results/benchmark.csv';
 
-    <script>
-        // Data URL should point to the data.json file in the same directory
-        const DATA_URL = "data.json"; 
+const CATEGORIES = {
+    "Science": ["fire_science", "secondary_physics", "advance_chemistry", "organic_chemistry", "physics", "junior_science_exam", "junior_chemistry", "engineering_math", "statistics_and_machine_learning", "tve_mathematics", "tve_natural_sciences"],
+    "Business": ["auditing", "financial_analysis", "insurance_studies", "business_management", "marketing_management", "management_accounting", "finance_banking", "taxation", "real_estate", "anti_money_laundering", "trust_practice", "official_document_management"],
+    "Health & Med": ["clinical_psychology", "pharmacy", "veterinary_pathology", "dentistry", "pharmacology", "veterinary_pharmacology", "basic_medical_science", "occupational_therapy_for_psychological_disorders", "optometry", "traditional_chinese_medicine_clinical_medicine"],
+    "Humanities": ["logic_reasoning", "education", "educational_psychology", "human_behavior", "geography_of_taiwan", "jce_humanities", "chinese_language_and_literature", "junior_chinese_exam", "politic_science", "three_principles_of_people", "national_protection", "general_principles_of_law", "administrative_law", "introduction_to_law", "taiwanese_hokkien", "music", "education_(profession_level)"],
+    "Tech & Eng": ["computer_science", "mechanical", "nautical_science", "technical", "agriculture", "culinary_skills", "tve_design"]
+};
 
-        fetch(DATA_URL)
-            .then(r => {
-                if (!r.ok) {
-                    throw new Error(`HTTP error! status: ${r.status}`);
+// Data Processing
+Papa.parse(CSV_PATH, {
+    download: true,
+    header: true,
+    dynamicTyping: true,
+    complete: function(results) {
+        processData(results.data);
+    }
+});
+
+function processData(data) {
+    const models = Object.keys(data[0]).filter(k => k !== 'task_name' && k !== 'metric');
+    let processed = models.map(name => {
+        let scores = { name, categoryScores: {}, overallSum: 0, count: 0 };
+        
+        data.forEach(row => {
+            const val = row[name];
+            if (val === null || val === undefined || isNaN(val)) return;
+            if (row.metric !== 'accuracy' && row.metric !== 'prefix_exact_match') return;
+
+            scores.overallSum += val;
+            scores.count++;
+
+            // Check categories
+            for (let cat in CATEGORIES) {
+                if (CATEGORIES[cat].some(sub => row.task_name.includes(sub))) {
+                    if (!scores.categoryScores[cat]) scores.categoryScores[cat] = [];
+                    scores.categoryScores[cat].push(val);
                 }
-                return r.json();
-            })
-            .then(data => {
-                // Ensure the data structure is the model-centric one
-                renderTable(data);
-                renderRadar(data);
-                renderBar(data);
-                renderAccordion(data);
-            })
-            .catch(err => {
-                console.error("Error fetching or processing data:", err);
-                // Display error message prominently on failure
-                document.body.insertAdjacentHTML(
-                    "afterbegin",
-                    "<p style='color:red; text-align:center;'>⚠️ Error loading leaderboard data. Check console for details.</p>"
-                );
-            });
+            }
+        });
 
-        /* ================= TABLE ================= */
-
-        function renderTable(data) {
-            const table = document.getElementById("leaderboard-table");
-            // Get model names, sort them by tmmlu_avg (descending for ranking)
-            const models = Object.keys(data)
-                .sort((a, b) => data[b].tmmlu_avg - data[a].tmmlu_avg);
-
-            let html = "<tr><th>Rank</th><th>Model</th><th>TMMLU+ Avg (%)</th><th>General Avg (%)</th></tr>";
-            
-            models.forEach((m, index) => {
-                // Format scores as percentages, rounded to 2 decimal places
-                const tmmluAvg = (data[m].tmmlu_avg * 100).toFixed(2);
-                const generalAvg = (data[m].general_avg * 100).toFixed(2);
-                
-                html += `
-                    <tr>
-                        <td><b>#${index + 1}</b></td>
-                        <td>${m}</td>
-                        <td>${tmmluAvg}</td>
-                        <td>${generalAvg}</td>
-                    </tr>`;
-            });
-
-            table.innerHTML = html;
+        // Compute Averages
+        for (let cat in scores.categoryScores) {
+            let arr = scores.categoryScores[cat];
+            scores.categoryScores[cat] = arr.reduce((a,b)=>a+b,0) / arr.length;
         }
+        scores.overall = scores.overallSum / scores.count;
+        scores.tmmlu_avg = Object.values(scores.categoryScores).reduce((a,b)=>a+b,0) / Object.keys(scores.categoryScores).length;
+        
+        return scores;
+    });
 
-        /* ================= RADAR ================= */
+    processed.sort((a,b) => b.overall - a.overall);
+    renderUI(processed);
+}
 
-        function renderRadar(data) {
-            const models = Object.keys(data);
-            
-            // Get categories from the first model, assumes all models have the same categories
-            const categories = Object.keys(data[models[0]].tmmlu_categories); 
+function renderUI(data) {
+    document.getElementById('loading').style.display = 'none';
+    const container = document.getElementById('leaderboard');
+    
+    data.forEach((m, i) => {
+        const html = `
+            <div class="lb-card">
+                <div class="row-trigger" data-bs-toggle="collapse" data-bs-target="#details-${i}">
+                    <div class="fw-bold">${m.name}</div>
+                    <div class="text-center score-main">${(m.overall * 100).toFixed(1)}%</div>
+                    <div class="text-center">${(m.tmmlu_avg * 100).toFixed(1)}%</div>
+                    <div class="text-end text-muted">▼</div>
+                </div>
+                <div id="details-${i}" class="collapse p-4 border-top" data-bs-parent="#leaderboard">
+                    <div class="row">
+                        ${Object.entries(m.categoryScores).map(([cat, score]) => `
+                            <div class="col-6 col-md-4 mb-3">
+                                <small class="text-muted d-block">${cat}</small>
+                                <span class="fw-bold">${(score*100).toFixed(1)}%</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>`;
+        container.insertAdjacentHTML('beforeend', html);
+    });
 
-            const traces = models.map(m => ({
-                type: "scatterpolar",
-                // Multiply by 100 for percentages, matching range [0, 100]
-                r: categories.map(c => data[m].tmmlu_categories[c] * 100), 
-                theta: categories,
-                fill: "toself",
-                name: m
-            }));
+    drawCharts(data);
+}
 
-            const layout = {
-                polar: { 
-                    radialaxis: { 
-                        visible: true, 
-                        range: [0, 100], // Set range from 0 to 100 for percentages
-                        title: { text: "Accuracy (%)" }
-                    } 
-                },
-                title: "TMMLU+ Category Averages (Radar Plot)",
-                showlegend: true,
-                margin: { t: 40, b: 40, l: 60, r: 60 }
-            };
+function drawCharts(data) {
+    const cats = Object.keys(CATEGORIES);
+    
+    // Radar
+    const radarTraces = data.map(m => ({
+        type: 'scatterpolar',
+        r: cats.map(c => m.categoryScores[c] || 0),
+        theta: cats,
+        fill: 'toself',
+        name: m.name
+    }));
+    Plotly.newPlot('radar-chart', radarTraces, { 
+        polar: { radialaxis: { visible: true, range: [0, 1] } },
+        margin: { l: 40, r: 40, t: 20, b: 20 },
+        legend: { orientation: 'h' }
+    });
 
-            Plotly.newPlot("tmmlu-radar", traces, layout);
-        }
+    // Bar
+    const barTraces = data.map(m => ({
+        x: cats,
+        y: cats.map(c => m.categoryScores[c] || 0),
+        name: m.name,
+        type: 'bar'
+    }));
+    Plotly.newPlot('bar-chart', barTraces, { 
+        barmode: 'group',
+        yaxis: { range: [0, 1], tickformat: ',.0%' },
+        legend: { orientation: 'h' }
+    });
+}
+</script>
 
-        /* ================= BAR CHART ================= */
-
-        function renderBar(data) {
-            const models = Object.keys(data);
-            const categories = Object.keys(data[models[0]].tmmlu_categories);
-            
-            // Create a sorted list of categories based on the average score of all models 
-            const categoryAverages = categories.map(cat => {
-                const totalScore = models.reduce((sum, m) => sum + data[m].tmmlu_categories[cat], 0);
-                return { name: cat, avg: totalScore / models.length };
-            }).sort((a, b) => b.avg - a.avg); // Sort descending
-
-            const sortedCategories = categoryAverages.map(c => c.name);
-
-            const traces = models.map(m => ({
-                x: sortedCategories,
-                // Get the data for the sorted categories
-                y: sortedCategories.map(c => data[m].tmmlu_categories[c] * 100), 
-                type: "bar",
-                name: m
-            }));
-
-            const layout = {
-                barmode: "group",
-                title: "TMMLU+ Category Averages (Bar Chart)",
-                xaxis: { title: "Category", tickangle: -45 },
-                yaxis: { title: "Accuracy (%)", range: [0, 100] },
-                margin: { t: 40, b: 120, l: 60, r: 20 } // Increase bottom margin for angled labels
-            };
-
-            Plotly.newPlot("tmmlu-bar", traces, layout);
-        }
-
-        /* ================= ACCORDION (Discipline Breakdown) ================= */
-
-        function renderAccordion(data) {
-            const container = document.getElementById("tmmlu-accordion");
-            const models = Object.keys(data);
-
-            // Get the list of all major categories (e.g., 'others', 'science') from the first model
-            const categories = Object.keys(data[models[0]].tmmlu_categories);
-
-            // The 'tmmlu_breakdown' holds the sub-discipline scores
-            const breakdownData = data[models[0]].tmmlu_breakdown; 
-
-            // Loop through each major category (e.g., 'others', 'science', 'medicine')
-            categories.forEach(cat => {
-                // Get the sub-disciplines for the current category from the breakdown data
-                const subs = breakdownData[cat]; 
-                if (!subs) return; // Skip if no breakdown data for this category
-
-                let catHtml = `<details><summary><b>${cat.toUpperCase()}</b></summary>`;
-
-                // Get a list of sub-disciplines and sort them by average score (descending)
-                const subDisciplines = Object.keys(subs).map(sub => {
-                    const totalScore = models.reduce((sum, m) => sum + data[m].tmmlu_breakdown[cat][sub], 0);
-                    return { name: sub, avg: totalScore / models.length };
-                }).sort((a, b) => b.avg - a.avg); 
-
-                subDisciplines.forEach(subItem => {
-                    const sub = subItem.name;
-                    catHtml += `<div class="sub"><b>${sub}</b><ul>`;
-                    
-                    // Collect all model scores for this sub-discipline and sort them
-                    const scores = models.map(m => ({
-                        name: m,
-                        score: data[m].tmmlu_breakdown[cat][sub] // Score for this model/sub
-                    })).sort((a, b) => b.score - a.score); // Sort models by score (descending)
-
-                    // Render the sorted list of models and scores
-                    scores.forEach(s => {
-                        const val = s.score;
-                        catHtml += `<li>${s.name}: ${(val * 100).toFixed(2)}%</li>`;
-                    });
-
-                    catHtml += "</ul></div>";
-                });
-
-                catHtml += "</details>";
-                container.innerHTML += catHtml;
-            });
-        }
-    </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
