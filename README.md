@@ -25,3 +25,23 @@ The benchmark covers **66 subjects** including STEM, Social Sciences, Humanities
 ├── results/
 │   └── benchmark.csv        # Central Data Source
 └── README.md                # Documentation
+
+🚀 How to Submit Results
+We welcome submissions from the research community!
+
+1. Prepare your data: Ensure your results are in the same format as results/benchmark.csv.
+
+2. Submit an Issue: Click the "Submit Your Model Results" button on the leaderboard website.
+
+3. Open a PR: Alternatively, fork this repo, add your model's column to the CSV, and submit a Pull Request.
+
+📄 Citation
+If you utilize this benchmark or leaderboard in your research, please cite:
+@misc{aslam2025tmmluplus,
+  author = {Aslam, Muhammad Saqlain},
+  title = {TMMLU+ Leaderboard: Traditional Chinese Massive Multitask Language Understanding Benchmark},
+  year = {2025},
+  publisher = {GitHub},
+  journal = {GitHub Repository},
+  howpublished = {\url{[https://github.com/MuhammadSaqlainAslam/tmmlu-leaderboard](https://github.com/MuhammadSaqlainAslam/tmmlu-leaderboard)}}
+}
