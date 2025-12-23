@@ -54,7 +54,7 @@ If you utilize this benchmark or leaderboard in your research, please cite:
 
 ---
 
-**Maintained by:** [Muhammad Saqlain Aslam](https://www.google.com/search?q=https://github.com/MuhammadSaqlainAslam)
+**Maintained by:** [Muhammad Saqlain Aslam](https://github.com/MuhammadSaqlainAslam)
 
 *Dedicated to the Traditional Chinese NLP Community.*
 
