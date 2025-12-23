@@ -15,12 +15,14 @@
         .lb-header { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; font-weight: 700; background: #1e293b; color: white; border-radius: 12px; margin-bottom: 10px; }
         .model-card { background: white; border-radius: 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; overflow: hidden; }
         .model-trigger { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; cursor: pointer; align-items: center; }
+        .section-title { font-weight: 800; font-size: 0.9rem; color: #475569; margin-top: 15px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }
         .category-item { border: 1px solid #f1f5f9; border-radius: 8px; margin-bottom: 5px; }
-        .category-trigger { padding: 10px 15px; cursor: pointer; display: flex; justify-content: space-between; background: #fafafa; font-weight: 600; font-size: 0.9rem; }
-        .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; padding: 12px; background: white; }
+        .category-trigger { padding: 10px 15px; cursor: pointer; display: flex; justify-content: space-between; background: #fafafa; font-weight: 600; font-size: 0.85rem; }
+        .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; padding: 12px; background: white; }
         .subject-stat { border-left: 3px solid #cbd5e1; padding-left: 8px; }
         .subject-name { font-size: 0.7rem; color: #64748b; display: block; text-transform: capitalize; }
-        .subject-val { font-weight: 700; font-size: 0.8rem; }
+        .subject-val { font-weight: 700; font-size: 0.85rem; }
+        .general-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 10px; }
     </style>
 </head>
 <body>
@@ -28,7 +30,7 @@
 <div class="hero text-center">
     <div class="container">
         <h1 class="fw-bold">🇹🇼 TMMLU+ Leaderboard</h1>
-        <p class="text-muted">Interactive Results for Traditional Chinese LLM Benchmarking</p>
+        <p class="text-muted">Detailed Results for Traditional Chinese Large Language Models</p>
     </div>
 </div>
 
@@ -39,8 +41,8 @@
     </div>
 
     <div class="lb-header mt-4">
-        <div>Model</div>
-        <div class="text-center">Overall</div>
+        <div>Model Name</div>
+        <div class="text-center">Overall Acc</div>
         <div class="text-center">TMMLU+ Avg</div>
         <div></div>
     </div>
@@ -53,10 +55,12 @@ const CSV_PATH = 'https://raw.githubusercontent.com/MuhammadSaqlainAslam/tmmlu-l
 const DISCIPLINE_MAP = {
     "Science": ["fire_science", "secondary_physics", "advance_chemistry", "organic_chemistry", "physics", "junior_science_exam", "junior_chemistry", "engineering_math", "statistics_and_machine_learning", "tve_mathematics", "tve_natural_sciences"],
     "Business": ["auditing", "financial_analysis", "insurance_studies", "business_management", "marketing_management", "management_accounting", "finance_banking", "taxation", "real_estate", "anti_money_laundering", "trust_practice", "official_document_management"],
-    "Health & Medicine": ["clinical_psychology", "pharmacy", "veterinary_pathology", "dentistry", "pharmacology", "veterinary_pharmacology", "basic_medical_science", "occupational_therapy_for_psychological_disorders", "optometry", "traditional_chinese_medicine_clinical_medicine"],
+    "Health & Med": ["clinical_psychology", "pharmacy", "veterinary_pathology", "dentistry", "pharmacology", "veterinary_pharmacology", "basic_medical_science", "occupational_therapy_for_psychological_disorders", "optometry", "traditional_chinese_medicine_clinical_medicine"],
     "Humanities": ["logic_reasoning", "education", "educational_psychology", "human_behavior", "geography_of_taiwan", "jce_humanities", "chinese_language_and_literature", "junior_chinese_exam", "politic_science", "three_principles_of_people", "national_protection", "general_principles_of_law", "administrative_law", "introduction_to_law", "taiwanese_hokkien", "music", "education_(profession_level)"],
-    "Tech & Engineering": ["computer_science", "mechanical", "nautical_science", "technical", "agriculture", "culinary_skills", "tve_design"]
+    "Tech & Eng": ["computer_science", "mechanical", "nautical_science", "technical", "agriculture", "culinary_skills", "tve_design"]
 };
+
+const GENERAL_TASKS = ["drcd", "penguin_table", "tw-rag", "gsm8k", "gpqa", "aiec", "aitest"];
 
 Papa.parse(CSV_PATH, {
     download: true, header: true, dynamicTyping: true,
@@ -66,25 +70,42 @@ Papa.parse(CSV_PATH, {
 function process(data) {
     const models = Object.keys(data[0]).filter(k => k !== 'task_name' && k !== 'metric');
     let results = models.map(mName => {
-        let mData = { name: mName, disciplines: {}, allScores: [] };
+        let mData = { name: mName, disciplines: {}, general: {}, allScores: [] };
+        
         data.forEach(row => {
             const score = row[mName];
             if (score === null || isNaN(score) || !row.task_name) return;
-            if (!row.metric.includes('accuracy') && !row.metric.includes('match')) return;
-
-            mData.allScores.push(score);
             const taskLower = row.task_name.toLowerCase();
-            
-            for (let disc in DISCIPLINE_MAP) {
-                if (DISCIPLINE_MAP[disc].some(sub => taskLower.includes(sub.toLowerCase()))) {
-                    if (!mData.disciplines[disc]) mData.disciplines[disc] = [];
-                    mData.disciplines[disc].push({ 
-                        subject: row.task_name.split('-').pop().replace(/_/g, ' '), 
-                        score: score 
+            const metricLower = row.metric.toLowerCase();
+
+            // Filter for primary metrics
+            if (metricLower.includes('accuracy') || metricLower.includes('match')) {
+                mData.allScores.push(score);
+
+                // Check for Discipline Category
+                let isDiscipline = false;
+                for (let disc in DISCIPLINE_MAP) {
+                    if (DISCIPLINE_MAP[disc].some(sub => taskLower.includes(sub.toLowerCase()))) {
+                        if (!mData.disciplines[disc]) mData.disciplines[disc] = [];
+                        mData.disciplines[disc].push({ 
+                            subject: row.task_name.split('-').pop().replace(/_/g, ' '), 
+                            score: score 
+                        });
+                        isDiscipline = true;
+                    }
+                }
+
+                // If not a discipline, check if it's a general benchmark
+                if (!isDiscipline) {
+                    GENERAL_TASKS.forEach(gt => {
+                        if (taskLower.includes(gt)) {
+                            mData.general[gt.toUpperCase()] = score;
+                        }
                     });
                 }
             }
         });
+
         mData.overall = mData.allScores.length ? (mData.allScores.reduce((a,b)=>a+b,0)/mData.allScores.length) : 0;
         let dAvgs = Object.values(mData.disciplines).map(arr => arr.reduce((a,b)=>a+b.score,0)/arr.length);
         mData.tmmlu_avg = dAvgs.length ? (dAvgs.reduce((a,b)=>a+b,0)/dAvgs.length) : 0;
@@ -97,10 +118,11 @@ function render(data) {
     const container = document.getElementById('leaderboard-container');
     container.innerHTML = "";
     data.forEach((m, mIdx) => {
+        // Build Disciplines HTML
         let discHTML = '';
         for (let disc in m.disciplines) {
             const avg = m.disciplines[disc].reduce((a,b)=>a+b.score,0) / m.disciplines[disc].length;
-            const subId = `details-${mIdx}-${disc.replace(/\s/g, '')}`;
+            const subId = `details-${mIdx}-${disc.replace(/[^a-zA-Z]/g, '')}`;
             discHTML += `
                 <div class="category-item">
                     <div class="category-trigger" data-bs-toggle="collapse" data-bs-target="#${subId}">
@@ -117,15 +139,33 @@ function render(data) {
                     </div>
                 </div>`;
         }
+
+        // Build General Benchmarks HTML
+        let generalHTML = '<div class="general-grid">';
+        Object.entries(m.general).forEach(([name, score]) => {
+            generalHTML += `
+                <div class="subject-stat">
+                    <span class="subject-name">${name}</span>
+                    <span class="subject-val">${(score*100).toFixed(1)}%</span>
+                </div>`;
+        });
+        generalHTML += '</div>';
+
         container.innerHTML += `
-            <div class="model-card">
+            <div class="model-card shadow-sm">
                 <div class="model-trigger" data-bs-toggle="collapse" data-bs-target="#m-exp-${mIdx}">
-                    <div class="fw-bold">${m.name}</div>
+                    <div class="fw-bold text-dark">${m.name}</div>
                     <div class="text-center text-primary fw-bold">${(m.overall*100).toFixed(1)}%</div>
-                    <div class="text-center fw-bold">${(m.tmmlu_avg*100).toFixed(1)}%</div>
-                    <div class="text-end">▾</div>
+                    <div class="text-center fw-bold text-secondary">${(m.tmmlu_avg*100).toFixed(1)}%</div>
+                    <div class="text-end text-muted">▾</div>
                 </div>
-                <div id="m-exp-${mIdx}" class="collapse p-3 border-top bg-light">${discHTML || '<p class="p-2">No category data found.</p>'}</div>
+                <div id="m-exp-${mIdx}" class="collapse p-4 border-top bg-light">
+                    <div class="section-title">General Benchmarks</div>
+                    ${Object.keys(m.general).length ? generalHTML : '<p class="text-muted small px-2">No general benchmark data found.</p>'}
+                    
+                    <div class="section-title">TMMLU+ Disciplines</div>
+                    ${discHTML || '<p class="text-muted small px-2">No discipline data found.</p>'}
+                </div>
             </div>`;
     });
     draw(data);
@@ -140,7 +180,7 @@ function draw(data) {
         }),
         theta: cats, fill: 'toself', name: m.name
     }));
-    Plotly.newPlot('radar-chart', radarTraces, { polar: { radialaxis: { range: [0, 1] } }, margin: { t: 40, b: 40, l: 40, r: 40 }, legend: { orientation: 'h', y: -0.2 } });
+    Plotly.newPlot('radar-chart', radarTraces, { polar: { radialaxis: { range: [0, 1], tickformat: ',.0%' } }, margin: { t: 50, b: 50, l: 50, r: 50 }, legend: { orientation: 'h', y: -0.2 } });
 
     const barTraces = data.slice(0,5).map(m => ({
         x: cats, y: cats.map(c => {
