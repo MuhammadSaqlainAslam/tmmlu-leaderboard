@@ -1,0 +1,124 @@
+task_name,metric,GPT-OSS-20B,FoxBrain_v1.5 (20B),FoxBrain_v1.2 (70B),TAIDE-12b-Chat
+AI2D,accuracy,0.0,,,
+AIEC,A-1_Commonsense Reasoning,0.02,,,
+AIEC,A-2_Mathematical Reasoning,0.01,,,
+AIEC,A-3_Domain-Specific Application Questions,0.29,,,
+AIEC,B-1_Article Length Variation,0.005,,,
+AIEC,B-2_Handling Spelling and Grammatical Errors,0.01984127,,,
+AIEC,C-1_Race,0.01,,,
+AIEC,C-2_Personal Traits,0.05,,,
+AIEC,C-3_Socioeconomic Conditions,0.026666667,,,
+AIEC,D-1_Privacy Understanding Capability,0.54,,,
+AIEC,D-2_Safety and Social Norms,0.04,,,
+AIEC,D-3_Fairness and Bias,0.24,,,
+C-Eval,accuracy,0.28,,,
+FGC,prefix_exact_match,0.36,,,
+GPQA,prefix_exact_match,0.000838926,,,
+GSM8K,prefix_exact_match,0.0,,,
+IMDB_TC,accuracy,0.0,,,
+LogiQA_TC,accuracy,0.301538462,,,
+LSAT_TC,accuracy,0.236781609,,,
+PAWS_TC,accuracy,0.0,,,
+PenguinsInTable_TC,accuracy,0.865771812,,,
+SAT_TC,accuracy,0.237864078,,,
+TCEval-v2/drcd,prefix_exact_match,0.858574291,0.584025193,0.749785285,0.657887203
+TCEval-v2/penguin_table,accuracy,0.895833333,0.701388889,0.888888889,0.041666667
+TCEval-v2/tmmluplus-accounting,accuracy,0.370192308,0.370192308,0.471153846,0.3125
+TCEval-v2/tmmluplus-advance_chemistry,accuracy,0.235772358,0.382113821,0.81300813,0.089430894
+TCEval-v2/tmmluplus-agriculture,accuracy,0.402777778,0.472222222,0.618055556,0.208333333
+TCEval-v2/tmmluplus-analytical_chemistry,accuracy,0.29245283,0.311320755,0.471698113,0.216981132
+TCEval-v2/tmmluplus-ancient_chinese_literature,accuracy,0.354166667,0.473958333,0.739583333,0.203125
+TCEval-v2/tmmluplus-applied_math,accuracy,0.25,0.25,0.43442623,0.114754098
+TCEval-v2/tmmluplus-architectural_history,accuracy,0.39516129,0.39516129,0.548387097,0.233870968
+TCEval-v2/tmmluplus-auditing,accuracy,0.304597701,0.33908046,0.528735632,0.229885057
+TCEval-v2/tmmluplus-basic_medical_science,accuracy,0.342105263,0.375,0.631578947,0.223684211
+TCEval-v2/tmmluplus-biochemistry,accuracy,0.300847458,0.406779661,0.686440678,0.194915254
+TCEval-v2/tmmluplus-biology,accuracy,0.393258427,0.421348315,0.713483146,0.202247191
+TCEval-v2/tmmluplus-business_management,accuracy,0.406896552,0.4,0.634482759,0.248275862
+TCEval-v2/tmmluplus-chemical_engineering,accuracy,0.231404959,0.41322314,0.752066116,0.140495868
+TCEval-v2/tmmluplus-civil_engineering,accuracy,0.354545455,0.354545455,0.609090909,0.2
+TCEval-v2/tmmluplus-clinical_medicine,accuracy,0.360153257,0.448275862,0.750957854,0.176245211
+TCEval-v2/tmmluplus-clinical_psychology,accuracy,0.33976834,0.420849421,0.72972973,0.173745174
+TCEval-v2/tmmluplus-computer_science,accuracy,0.25,0.358333333,0.591666667,0.191666667
+TCEval-v2/tmmluplus-dentistry,accuracy,0.371287129,0.425742574,0.683168317,0.202970297
+TCEval-v2/tmmluplus-dermatology,accuracy,0.362962963,0.466666667,0.711111111,0.2
+TCEval-v2/tmmluplus-distribution_and_marketing,accuracy,0.375,0.391304348,0.630434783,0.201086957
+TCEval-v2/tmmluplus-economics,accuracy,0.270833333,0.4375,0.697916667,0.177083333
+TCEval-v2/tmmluplus-education,accuracy,0.411111111,0.461111111,0.727777778,0.261111111
+TCEval-v2/tmmluplus-electrical_engineering,accuracy,0.41322314,0.330578512,0.603305785,0.157024793
+TCEval-v2/tmmluplus-electronics,accuracy,0.316455696,0.348101266,0.53164557,0.189873418
+TCEval-v2/tmmluplus-english,accuracy,0.438596491,0.526315789,0.725146199,0.222222222
+TCEval-v2/tmmluplus-food_science,accuracy,0.413043478,0.554347826,0.711956522,0.233695652
+TCEval-v2/tmmluplus-general_principles_of_law,accuracy,0.41509434,0.41509434,0.396226415,0.150943396
+TCEval-v2/tmmluplus-geography,accuracy,0.45045045,0.481981982,0.774774775,0.216216216
+TCEval-v2/tmmluplus-geology,accuracy,0.380165289,0.438016529,0.644628099,0.231404959
+TCEval-v2/tmmluplus-insurance_studies,accuracy,0.413157895,0.413157895,0.465789474,0.322368421
+TCEval-v2/tmmluplus-interior_design,accuracy,0.420454545,0.443181818,0.670454545,0.215909091
+TCEval-v2/tmmluplus-international_business,accuracy,0.373417722,0.443037975,0.620253165,0.265822785
+TCEval-v2/tmmluplus-jce_humanities,accuracy,0.411111111,0.644444444,0.927777778,0.188888889
+TCEval-v2/tmmluplus-junior_chinese,accuracy,0.382488479,0.534562212,0.751152074,0.207373272
+TCEval-v2/tmmluplus-junior_history,accuracy,0.418079096,0.610169492,0.858757062,0.209039548
+TCEval-v2/tmmluplus-junior_mathematics,accuracy,0.326797386,0.326797386,0.444444444,0.163398693
+TCEval-v2/tmmluplus-junior_science,accuracy,0.415300546,0.431693989,0.666666667,0.191256831
+TCEval-v2/tmmluplus-junior_social_studies,accuracy,0.452380952,0.674603175,0.746031746,0.134920635
+TCEval-v2/tmmluplus-land_administration,accuracy,0.375527426,0.438818565,0.603375527,0.219409283
+TCEval-v2/tmmluplus-law,accuracy,0.245283019,0.33490566,0.466981132,0.20754717
+TCEval-v2/tmmluplus-macroeconomics,accuracy,0.348623853,0.463302752,0.766055046,0.206422018
+TCEval-v2/tmmluplus-management_accounting,accuracy,0.347031963,0.347031963,0.388127854,0.260273973
+TCEval-v2/tmmluplus-marketing_management,accuracy,0.435,0.42,0.63,0.225
+TCEval-v2/tmmluplus-material_science,accuracy,0.404958678,0.41322314,0.644628099,0.173553719
+TCEval-v2/tmmluplus-mechanical_engineering,accuracy,0.304347826,0.339130435,0.530434783,0.139130435
+TCEval-v2/tmmluplus-microeconomics,accuracy,0.301470588,0.419117647,0.698529412,0.176470588
+TCEval-v2/tmmluplus-music,accuracy,0.417266187,0.384892086,0.514388489,0.258992806
+TCEval-v2/tmmluplus-national_protection,accuracy,0.369668246,0.454976303,0.682464455,0.199052133
+TCEval-v2/tmmluplus-nautical_science,accuracy,0.295825771,0.295825771,0.515426497,0.24137931
+TCEval-v2/tmmluplus-nursing,accuracy,0.36622807,0.5,0.743421053,0.225877193
+TCEval-v2/tmmluplus-nutrition,accuracy,0.372807018,0.464912281,0.714912281,0.228070175
+TCEval-v2/tmmluplus-occupational_therapy_for_psychological_disorders,accuracy,0.390423573,0.390423573,0.729281768,0.399631676
+TCEval-v2/tmmluplus-optometry,accuracy,0.385542169,0.409638554,0.578313253,0.246987952
+TCEval-v2/tmmluplus-organic_chemistry,accuracy,0.231292517,0.333333333,0.734693878,0.068027211
+TCEval-v2/tmmluplus-oriental_history,accuracy,0.344827586,0.482758621,0.784482759,0.224137931
+TCEval-v2/tmmluplus-pediatrics,accuracy,0.320441989,0.392265193,0.718232044,0.187845304
+TCEval-v2/tmmluplus-pharmacy,accuracy,0.294117647,0.388888889,0.75,0.16503268
+TCEval-v2/tmmluplus-philosophy,accuracy,0.360189573,0.450236967,0.691943128,0.222748815
+TCEval-v2/tmmluplus-physical_education,accuracy,0.443181818,0.517045455,0.715909091,0.1875
+TCEval-v2/tmmluplus-physical_therapy,accuracy,0.354166667,0.458333333,0.704166667,0.1875
+TCEval-v2/tmmluplus-physics,accuracy,0.345864662,0.353383459,0.556390977,0.15037594
+TCEval-v2/tmmluplus-policeman,accuracy,0.422619048,0.482142857,0.669642857,0.193452381
+TCEval-v2/tmmluplus-political_science,accuracy,0.380733945,0.417431193,0.628440367,0.188073394
+TCEval-v2/tmmluplus-psychiatry,accuracy,0.322580645,0.435483871,0.655913978,0.182795699
+TCEval-v2/tmmluplus-psychology,accuracy,0.385321101,0.444954128,0.766055046,0.211009174
+TCEval-v2/tmmluplus-public_health,accuracy,0.385321101,0.490825688,0.724770642,0.19266055
+TCEval-v2/tmmluplus-social_work,accuracy,0.404255319,0.521276596,0.728723404,0.260638298
+TCEval-v2/tmmluplus-sociology,accuracy,0.382488479,0.506912442,0.788018433,0.230414747
+TCEval-v2/tmmluplus-statistics,accuracy,0.312101911,0.331210191,0.52866242,0.146496815
+TCEval-v2/tmmluplus-taxation,accuracy,0.234666667,0.229333333,0.306666667,0.234666667
+TCEval-v2/tmmluplus-technical,accuracy,0.430348259,0.388059701,0.597014925,0.15920398
+TCEval-v2/tmmluplus-traditional_chinese_medicine_clinical_medicine,accuracy,0.308943089,0.43495935,0.654471545,0.154471545
+TCEval-v2/tmmluplus-trust_practice,accuracy,0.274314214,0.364089776,0.543640898,0.239401496
+TCEval-v2/tmmluplus-tve_design,accuracy,0.430107527,0.467741935,0.672043011,0.23655914
+TCEval-v2/tmmluplus-tve_mathematics,accuracy,0.606666667,0.413333333,0.52,0.246666667
+TCEval-v2/tmmluplus-tve_natural_sciences,accuracy,0.375,0.470588235,0.713235294,0.205882353
+TCEval-v2/tmmluplus-veterinary_medicine,accuracy,0.297029703,0.341584158,0.628712871,0.163366337
+TCEval-v2/tmmluplus-veterinary_pathology,accuracy,0.31641791,0.394029851,0.656716418,0.191044776
+TCEval-v2/tmmluplus-western_history,accuracy,0.381188119,0.524752475,0.836633663,0.232673267
+TCEval-v2/tmmluplus-world_religions,accuracy,0.348214286,0.5625,0.776785714,0.232142857
+TCEval-v2/TW-RAG,prefix_exact_match,0.9,,,
+TMMLU/CAP Chinese,accuracy,0.587301587,,,
+TMMLU/CAP Math,accuracy,0.8,,,
+TMMLU/Chinese Cooking - Meat,accuracy,0.5,,,
+TMMLU/Clinical Psychology,accuracy,0.420849421,,,
+TMMLU/Interior Woodworking,accuracy,0.517241379,,,
+TMMLU/Legal Knowledge,accuracy,0.7,,,
+TMMLU/Overview of Tourism Resources,accuracy,0.583333333,,,
+TMMLU/Pharmacy,accuracy,0.388888889,,,
+TMMLU/Subject Test Physics,accuracy,0.333333333,,,
+TMMLU/TCM Clinical Medicine,accuracy,0.280254777,,,
+TMMLU/Vehicle Painting,accuracy,0.627118644,,,
+TTQA,accuracy,0.699029126,,,
+TaiwanVQA,accuracy,0.000717,,,
+XSum_TC_5k,rouge1,0.037621742,,,
+XSum_TC_5k,rouge2,0.007028892,,,
+XSum_TC_5k,rougeL,0.030459414,,,
+mean_of_TMMLU+,accuracy,0.348924622,0.447600691,0.658335079,0.198485324
+tmmluplus_AVG,accuracy,0.348924622,,,
