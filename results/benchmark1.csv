@@ -121,4 +121,5 @@ XSum_TC_5k,rouge1,0.037621742,,,
 XSum_TC_5k,rouge2,0.007028892,,,
 XSum_TC_5k,rougeL,0.030459414,,,
 mean_of_TMMLU+,accuracy,0.348924622,0.447600691,0.658335079,0.198485324
+
 tmmluplus_AVG,accuracy,0.348924622,,,
