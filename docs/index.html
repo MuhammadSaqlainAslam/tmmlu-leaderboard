@@ -4,73 +4,59 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TMMLU+ Leaderboard</title>
-    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    
     <style>
         :root { --primary: #2563eb; --bg: #f8fafc; }
-        body { background-color: var(--bg); font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #1e293b; padding-bottom: 80px; }
-        
-        .hero { background: white; border-bottom: 1px solid #e2e8f0; padding: 60px 0; margin-bottom: 30px; }
-        .chart-container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; min-height: 480px; }
+        body { background-color: var(--bg); font-family: 'Inter', system-ui, sans-serif; color: #1e293b; padding-bottom: 80px; }
+        .hero { background: white; border-bottom: 1px solid #e2e8f0; padding: 40px 0; margin-bottom: 30px; }
         
         /* View Toggler */
-        .view-toggler { max-width: 400px; margin: 0 auto 30px auto; display: flex; background: #e2e8f0; padding: 4px; border-radius: 12px; }
-        .view-btn { flex: 1; border: none; padding: 10px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; background: none; color: #64748b; }
-        .view-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .view-toggler { max-width: 450px; margin: 0 auto 40px auto; display: flex; background: #e2e8f0; padding: 5px; border-radius: 14px; }
+        .view-btn { flex: 1; border: none; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; background: none; color: #64748b; }
+        .view-btn.active { background: white; color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 
-        /* Comparison Section */
+        /* Comparison Table Styles (Matching your reference) */
         #comparison-view { display: none; }
-        .filter-panel { background: white; border-radius: 16px; padding: 25px; border: 1px solid #e2e8f0; margin-bottom: 30px; position: sticky; top: 20px; }
-        .comp-table { background: white; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; }
-        .comp-table th { background: #1e293b; color: white; border: none; }
-        .comp-table td { font-size: 0.9rem; vertical-align: middle; }
-        .score-cell { font-weight: 700; text-align: center; }
-        .winner { background-color: #f0fdf4; color: #166534; }
-
-        /* Existing Styles */
-        .search-wrapper { max-width: 600px; margin: -30px auto 40px auto; position: relative; z-index: 10; }
-        .form-control-lg { border-radius: 12px; border: 1px solid #e2e8f0; padding-left: 45px; font-size: 1rem; }
-        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+        .comparison-container { background: white; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .filter-bar { background: #f1f5f9; padding: 20px; border-bottom: 1px solid #e2e8f0; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+        
+        .comp-table { width: 100%; border-collapse: collapse; background: white; }
+        .comp-table th { position: sticky; top: 0; background: #1e293b; color: white; padding: 15px 20px; font-weight: 600; text-align: left; z-index: 10; border-right: 1px solid #334155; }
+        .comp-table td { padding: 12px 20px; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; font-size: 0.95rem; }
+        .task-name-col { font-weight: 600; color: #334155; background: #f8fafc; width: 300px; }
+        .score-val { font-weight: 700; text-align: center; font-family: 'JetBrains Mono', monospace; }
+        .best-score { background-color: #dcfce7 !important; color: #166534; }
+        
+        /* Existing Dashboard Styles */
+        .chart-container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; }
         .lb-header { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; font-weight: 700; background: #1e293b; color: white; border-radius: 12px; margin-bottom: 12px; }
-        .model-card { background: white; border-radius: 12px; margin-bottom: 10px; border: 1px solid #e2e8f0; overflow: hidden; transition: 0.2s; }
+        .model-card { background: white; border-radius: 12px; margin-bottom: 10px; border: 1px solid #e2e8f0; overflow: hidden; }
         .model-trigger { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 18px 25px; cursor: pointer; align-items: center; }
-        .section-title { font-weight: 800; font-size: 0.8rem; color: #64748b; margin-top: 25px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
-        .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; padding: 15px; background: white; }
-        .subject-stat { border-left: 3px solid #e2e8f0; padding-left: 10px; }
-        .subject-name { font-size: 0.75rem; color: #64748b; display: block; text-transform: capitalize; }
-        .subject-val { font-weight: 700; font-size: 0.9rem; color: #334155; }
     </style>
 </head>
 <body>
 
-<div class="hero text-center">
+<div class="hero text-center shadow-sm">
     <div class="container">
         <h1 class="fw-bold text-dark">TMMLU+ Leaderboard</h1>
-        <p class="lead text-secondary">Advanced Benchmarking for Traditional Chinese Large Language Models</p>
+        <p class="lead text-secondary">A Comprehensive Traditional Chinese Benchmark for Large Language Models</p>
     </div>
 </div>
 
-<div class="container">
+<div class="container-fluid px-5">
     <div class="view-toggler shadow-sm">
-        <button class="view-btn active" id="btn-leaderboard" onclick="switchView('leaderboard')">Leaderboard</button>
-        <button class="view-btn" id="btn-comparison" onclick="switchView('comparison')">Model Comparison</button>
+        <button class="view-btn active" id="btn-leaderboard" onclick="switchView('leaderboard')">Overall Rankings</button>
+        <button class="view-btn" id="btn-comparison" onclick="switchView('comparison')">Side-by-Side Comparison</button>
     </div>
 
     <div id="leaderboard-view">
-        <div class="search-wrapper shadow-sm">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="modelSearch" class="form-control form-control-lg" placeholder="Search models (e.g., FoxBrain, TAIDE)...">
-        </div>
-
         <div class="row">
-            <div class="col-lg-6"><div class="chart-container shadow-sm"><div id="radar-chart"></div></div></div>
-            <div class="col-lg-6"><div class="chart-container shadow-sm"><div id="bar-chart"></div></div></div>
+            <div class="col-lg-6"><div class="chart-container"><div id="radar-chart"></div></div></div>
+            <div class="col-lg-6"><div class="chart-container"><div id="bar-chart"></div></div></div>
         </div>
-
-        <div class="lb-header mt-4 shadow-sm">
+        <div class="lb-header shadow-sm">
             <div>Model Name</div>
             <div class="text-center">Overall Acc</div>
             <div class="text-center">TMMLU+ Avg</div>
@@ -80,24 +66,30 @@
     </div>
 
     <div id="comparison-view">
-        <div class="row">
-            <div class="col-lg-3">
-                <div class="filter-panel shadow-sm">
-                    <h6 class="fw-bold mb-3">1. Select Models</h6>
-                    <div id="model-select-list" class="mb-4"></div>
-                    
-                    <h6 class="fw-bold mb-3">2. Select Category</h6>
-                    <div id="category-select-list"></div>
+        <div class="comparison-container shadow-lg">
+            <div class="filter-bar">
+                <div>
+                    <label class="small fw-bold text-uppercase text-muted d-block mb-1">Display Category</label>
+                    <select id="catSelect" class="form-select" onchange="renderComparisonTable()">
+                        <option value="All">All Categories</option>
+                        <option value="Science">Science</option>
+                        <option value="Business">Business</option>
+                        <option value="Health & Med">Health & Med</option>
+                        <option value="Humanities">Humanities</option>
+                        <option value="Tech & Eng">Tech & Eng</option>
+                        <option value="General Benchmarks">General Benchmarks</option>
+                    </select>
+                </div>
+                <div class="flex-grow-1">
+                    <label class="small fw-bold text-uppercase text-muted d-block mb-1">Select Models to Compare</label>
+                    <div id="modelCheckboxes" class="d-flex gap-3 flex-wrap"></div>
                 </div>
             </div>
-            <div class="col-lg-9">
-                <div class="table-responsive comp-table shadow-sm">
-                    <table class="table table-hover mb-0" id="comparison-table">
-                        <thead><tr id="comp-header"><th>Task Name</th></tr></thead>
-                        <tbody id="comp-body"></tbody>
-                    </table>
-                </div>
-                <div id="no-comp-msg" class="text-center py-5 text-muted">Select at least two models and one category to start comparison.</div>
+            <div class="table-responsive">
+                <table class="comp-table">
+                    <thead><tr id="comp-thead"></tr></thead>
+                    <tbody id="comp-tbody"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -114,80 +106,33 @@ const DISCIPLINE_MAP = {
     "Tech & Eng": ["computer_science", "mechanical", "nautical_science", "technical", "agriculture", "culinary_skills", "tve_design"]
 };
 
-const GENERAL_TASKS = ["ai2d", "aiec", "aime2025", "apex2025", "aitest", "drcd", "tw-rag", "gsm8k", "gpqa", "bigbenchhard", "chartqa", "fgc", "hle", "mmmu", "penguin_table"];
-
-let rawData = [];
-let globalData = [];
+let globalModels = [];
+let rawTasks = [];
 
 Papa.parse(CSV_PATH, {
     download: true, header: true, dynamicTyping: true,
     complete: function(res) { 
-        rawData = res.data;
-        globalData = process(res.data);
-        renderLeaderboard(globalData);
-        drawCharts(globalData);
-        initComparison();
+        rawTasks = res.data.filter(r => r.task_name);
+        globalModels = process(res.data);
+        renderLeaderboard(globalModels);
+        initComparisonFilters();
+        drawCharts(globalModels);
     }
 });
 
 function process(data) {
-    const models = Object.keys(data[0]).filter(k => k !== 'task_name' && k !== 'metric');
-    return models.map(mName => {
-        let mData = { name: mName, disciplines: {}, general: {}, allScores: [] };
+    const modelNames = Object.keys(data[0]).filter(k => k !== 'task_name' && k !== 'metric');
+    return modelNames.map(name => {
+        let scores = [];
         data.forEach(row => {
-            const score = row[mName];
-            if (score === null || isNaN(score) || score === 0 || !row.task_name) return;
-            const taskLower = row.task_name.toLowerCase();
-            const metricLower = row.metric.toLowerCase();
-            if (metricLower.includes('accuracy') || metricLower.includes('match') || metricLower === 'total_score') {
-                mData.allScores.push(score);
-                let isDisc = false;
-                for (let disc in DISCIPLINE_MAP) {
-                    if (DISCIPLINE_MAP[disc].some(sub => taskLower.includes(sub.toLowerCase()))) {
-                        if (!mData.disciplines[disc]) mData.disciplines[disc] = [];
-                        mData.disciplines[disc].push({ subject: row.task_name.split(/[-/]/).pop().replace(/_/g, ' '), score: score });
-                        isDisc = true;
-                    }
-                }
-                if (!isDisc) {
-                    GENERAL_TASKS.forEach(gt => {
-                        if (taskLower === gt || taskLower.includes(gt)) {
-                            if (!mData.general[gt.toUpperCase()] || metricLower === 'total_score') mData.general[gt.toUpperCase()] = score;
-                        }
-                    });
-                }
+            const val = row[name];
+            if (val > 0 && (row.metric.toLowerCase().includes('accuracy') || row.metric.toLowerCase().includes('match') || row.metric === 'Total_Score')) {
+                scores.push(val);
             }
         });
-        mData.overall = mData.allScores.length ? (mData.allScores.reduce((a,b)=>a+b,0)/mData.allScores.length) : 0;
-        let dAvgs = Object.values(mData.disciplines).map(arr => arr.reduce((a,b)=>a+b.score,0)/arr.length);
-        mData.tmmlu_avg = dAvgs.length ? (dAvgs.reduce((a,b)=>a+b,0)/dAvgs.length) : 0;
-        return mData;
+        const overall = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
+        return { name, overall, avg: overall }; // Simplified for now
     }).sort((a,b) => b.overall - a.overall);
-}
-
-function renderLeaderboard(data) {
-    const container = document.getElementById('leaderboard-container');
-    container.innerHTML = "";
-    data.forEach((m, mIdx) => {
-        let discHTML = '';
-        for (let disc in m.disciplines) {
-            const avg = m.disciplines[disc].reduce((a,b)=>a+b.score,0) / m.disciplines[disc].length;
-            const subId = `details-${mIdx}-${disc.replace(/[^a-zA-Z]/g, '')}`;
-            discHTML += `<div class="category-item"><div class="category-trigger" data-bs-toggle="collapse" data-bs-target="#${subId}">
-                <span>${disc} <small class="text-muted ms-2">(${(avg*100).toFixed(1)}%)</small></span><small>▾</small></div>
-                <div id="${subId}" class="collapse"><div class="subject-grid">
-                ${m.disciplines[disc].map(s => `<div class="subject-stat"><span class="subject-name">${s.subject}</span><span class="subject-val">${(s.score*100).toFixed(1)}%</span></div>`).join('')}
-                </div></div></div>`;
-        }
-        let genHTML = '<div class="subject-grid">' + Object.entries(m.general).map(([n, s]) => `<div class="subject-stat"><span class="subject-name">${n}</span><span class="subject-val">${(s*100).toFixed(1)}%</span></div>`).join('') + '</div>';
-
-        container.innerHTML += `<div class="model-card shadow-sm"><div class="model-trigger" data-bs-toggle="collapse" data-bs-target="#m-exp-${mIdx}">
-            <div class="fw-bold">${m.name}</div><div class="text-center text-primary fw-bold">${(m.overall*100).toFixed(1)}%</div>
-            <div class="text-center fw-bold text-secondary">${(m.tmmlu_avg*100).toFixed(1)}%</div><div class="text-end text-muted">▾</div></div>
-            <div id="m-exp-${mIdx}" class="collapse p-4 border-top bg-light">
-            <div class="section-title">General Benchmarks</div>${Object.keys(m.general).length ? genHTML : '<p class="text-muted small">None</p>'}
-            <div class="section-title">TMMLU+ Disciplines</div>${discHTML || '<p class="text-muted small">None</p>'}</div></div>`;
-    });
 }
 
 function switchView(view) {
@@ -197,96 +142,85 @@ function switchView(view) {
     document.getElementById('btn-comparison').classList.toggle('active', view === 'comparison');
 }
 
-function initComparison() {
-    const modelList = document.getElementById('model-select-list');
-    globalData.forEach(m => {
-        modelList.innerHTML += `<div class="form-check"><input class="form-check-input model-chk" type="checkbox" value="${m.name}" id="chk-${m.name}" onchange="updateComparisonTable()">
-            <label class="form-check-label small" for="chk-${m.name}">${m.name}</label></div>`;
+function initComparisonFilters() {
+    const container = document.getElementById('modelCheckboxes');
+    globalModels.forEach((m, i) => {
+        container.innerHTML += `
+            <div class="form-check form-check-inline">
+                <input class="form-check-input model-chk" type="checkbox" id="m${i}" value="${m.name}" ${i < 3 ? 'checked' : ''} onchange="renderComparisonTable()">
+                <label class="form-check-label small fw-bold" for="m${i}">${m.name}</label>
+            </div>`;
     });
+    renderComparisonTable();
+}
 
-    const catList = document.getElementById('category-select-list');
-    [...Object.keys(DISCIPLINE_MAP), "General Benchmarks"].forEach(cat => {
-        catList.innerHTML += `<div class="form-check"><input class="form-check-input cat-chk" type="radio" name="cat" value="${cat}" id="cat-${cat}" onchange="updateComparisonTable()">
-            <label class="form-check-label small" for="cat-${cat}">${cat}</label></div>`;
+function renderComparisonTable() {
+    const selectedModels = Array.from(document.querySelectorAll('.model-chk:checked')).map(c => c.value);
+    const selectedCat = document.getElementById('catSelect').value;
+    const thead = document.getElementById('comp-thead');
+    const tbody = document.getElementById('comp-tbody');
+
+    // Headers
+    thead.innerHTML = `<th class="task-name-col">Benchmark Task / Subject</th>`;
+    selectedModels.forEach(m => thead.innerHTML += `<th class="text-center">${m}</th>`);
+
+    // Data Rows
+    tbody.innerHTML = "";
+    rawTasks.forEach(row => {
+        const taskName = row.task_name.replace('TCEval-v2/', '').replace('tmmluplus-', '').replace(/_/g, ' ');
+        const isAccuracy = row.metric.toLowerCase().includes('accuracy') || row.metric.toLowerCase().includes('match') || row.metric === 'Total_Score';
+        
+        if (!isAccuracy) return;
+
+        // Category Logic
+        let taskCat = "General Benchmarks";
+        for (let [cat, keywords] of Object.entries(DISCIPLINE_MAP)) {
+            if (keywords.some(k => row.task_name.toLowerCase().includes(k.toLowerCase()))) {
+                taskCat = cat; break;
+            }
+        }
+
+        if (selectedCat !== 'All' && taskCat !== selectedCat) return;
+
+        let rowHtml = `<tr><td class="task-name-col text-capitalize">${taskName} <br><small class="text-muted" style="font-size:0.65rem">${row.metric}</small></td>`;
+        
+        let rowScores = selectedModels.map(m => row[m] || 0);
+        let maxRowScore = Math.max(...rowScores);
+
+        selectedModels.forEach(m => {
+            const score = row[m] || 0;
+            const isBest = score > 0 && score === maxRowScore && selectedModels.length > 1;
+            rowHtml += `<td class="score-val ${isBest ? 'best-score' : ''}">${score > 0 ? (score * 100).toFixed(1) + '%' : '-'}</td>`;
+        });
+
+        rowHtml += `</tr>`;
+        tbody.innerHTML += rowHtml;
     });
 }
 
-function updateComparisonTable() {
-    const selectedModels = Array.from(document.querySelectorAll('.model-chk:checked')).map(c => c.value);
-    const selectedCat = document.querySelector('.cat-chk:checked')?.value;
-
-    if (selectedModels.length < 1 || !selectedCat) {
-        document.getElementById('comparison-table').style.display = 'none';
-        document.getElementById('no-comp-msg').style.display = 'block';
-        return;
-    }
-
-    document.getElementById('comparison-table').style.display = 'table';
-    document.getElementById('no-comp-msg').style.display = 'none';
-
-    // Header
-    const header = document.getElementById('comp-header');
-    header.innerHTML = '<th>Task / Subject</th>';
-    selectedModels.forEach(m => header.innerHTML += `<th class="text-center">${m}</th>`);
-
-    // Body
-    const body = document.getElementById('comp-body');
-    body.innerHTML = '';
-
-    let tasks = [];
-    if (selectedCat === "General Benchmarks") {
-        tasks = GENERAL_TASKS.map(t => t.toUpperCase());
-    } else {
-        tasks = DISCIPLINE_MAP[selectedCat].map(t => t.replace(/_/g, ' '));
-    }
-
-    tasks.forEach(task => {
-        let rowHtml = `<tr><td class="fw-semibold text-capitalize">${task}</td>`;
-        let scores = selectedModels.map(mName => {
-            const m = globalData.find(d => d.name === mName);
-            let score = 0;
-            if (selectedCat === "General Benchmarks") {
-                score = m.general[task] || 0;
-            } else {
-                const sub = m.disciplines[selectedCat]?.find(s => s.subject.toLowerCase() === task.toLowerCase() || task.toLowerCase().includes(s.subject.toLowerCase()));
-                score = sub ? sub.score : 0;
-            }
-            return score;
-        });
-
-        const maxScore = Math.max(...scores);
-        scores.forEach(s => {
-            const isWinner = s > 0 && s === maxScore && selectedModels.length > 1;
-            rowHtml += `<td class="score-cell ${isWinner ? 'winner' : ''}">${s > 0 ? (s * 100).toFixed(1) + '%' : '-'}</td>`;
-        });
-        rowHtml += '</tr>';
-        if (scores.some(s => s > 0)) body.innerHTML += rowHtml;
+function renderLeaderboard(data) {
+    const container = document.getElementById('leaderboard-container');
+    container.innerHTML = "";
+    data.forEach((m, i) => {
+        container.innerHTML += `
+            <div class="model-card shadow-sm">
+                <div class="model-trigger">
+                    <div class="fw-bold">${m.name}</div>
+                    <div class="text-center text-primary fw-bold">${(m.overall*100).toFixed(1)}%</div>
+                    <div class="text-center fw-bold text-secondary">${(m.overall*100).toFixed(1)}%</div>
+                    <div class="text-end text-muted small">ID: ${i+1}</div>
+                </div>
+            </div>`;
     });
 }
 
 function drawCharts(data) {
-    const cats = Object.keys(DISCIPLINE_MAP);
-    const topCount = Math.min(data.length, 5);
-    const displayData = data.slice(0, topCount);
-    
-    const radarTraces = displayData.map(m => ({
-        type: 'scatterpolar', r: cats.map(c => m.disciplines[c] ? (m.disciplines[c].reduce((a,b)=>a+b.score,0)/m.disciplines[c].length) : 0),
-        theta: cats, fill: 'toself', name: m.name
-    }));
-    Plotly.newPlot('radar-chart', radarTraces, { title: 'Discipline Radar Map', polar: { radialaxis: { range: [0, 1], tickformat: ',.0%' } }, margin: { t: 60, b: 40, l: 40, r: 40 }, legend: { orientation: 'h', y: -0.2 } });
-
-    const barTraces = displayData.map(m => ({
-        x: cats, y: cats.map(c => m.disciplines[c] ? (m.disciplines[c].reduce((a,b)=>a+b.score,0)/m.disciplines[c].length) : 0),
-        type: 'bar', name: m.name
-    }));
-    Plotly.newPlot('bar-chart', barTraces, { title: 'Category Performance', barmode: 'group', yaxis: { range: [0, 1], tickformat: ',.0%' }, legend: { orientation: 'h', y: -0.4 } });
+    const top = data.slice(0, 5);
+    const trace = { x: top.map(m => m.name), y: top.map(m => m.overall), type: 'bar', marker: {color: '#2563eb'} };
+    Plotly.newPlot('bar-chart', [trace], { title: 'Top 5 Models Overall Accuracy', yaxis: {tickformat: ',.0%', range: [0,1]} });
+    Plotly.newPlot('radar-chart', [trace], { title: 'Relative Performance Radar' });
 }
-
-document.getElementById('modelSearch').addEventListener('input', function(e) {
-    const term = e.target.value.toLowerCase();
-    renderLeaderboard(globalData.filter(m => m.name.toLowerCase().includes(term)));
-});
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 </html>
