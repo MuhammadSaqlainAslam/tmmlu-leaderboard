@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TMMLU+ Leaderboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root { --primary: #2563eb; --bg: #f8fafc; }
+        body { background-color: var(--bg); font-family: 'Inter', system-ui, sans-serif; color: #1e293b; padding-bottom: 80px; }
+        .hero { background: white; border-bottom: 1px solid #e2e8f0; padding: 40px 0; margin-bottom: 30px; }
+        
+        /* Navigation Tabs */
+        .nav-tabs { border-bottom: 2px solid #e2e8f0; margin-bottom: 30px; justify-content: center; border:none; }
+        .nav-link { border: none !important; font-weight: 700; color: #64748b; padding: 12px 30px; cursor: pointer; transition: 0.2s; }
+        .nav-link.active { color: var(--primary) !important; border-bottom: 3px solid var(--primary) !important; background: none !important; }
+
+        /* Charts Section */
+        .chart-container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; min-height: 480px; }
+        
+        /* Comparison Table Section */
+        .comparison-container { background: white; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; margin-top: 20px; }
+        .filter-bar { background: #f1f5f9; padding: 20px; border-bottom: 1px solid #e2e8f0; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+        .comp-table { width: 100%; border-collapse: collapse; background: white; }
+        .comp-table th { position: sticky; top: 0; background: #1e293b; color: white; padding: 15px 20px; font-weight: 600; text-align: left; z-index: 10; border-right: 1px solid #334155; }
+        .comp-table td { padding: 12px 20px; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; font-size: 0.95rem; }
+        .task-name-col { font-weight: 600; color: #334155; background: #f8fafc; width: 350px; }
+        .score-val { font-weight: 700; text-align: center; font-family: 'JetBrains Mono', monospace; }
+        .best-score { background-color: #dcfce7 !important; color: #166534; }
+        
+        /* Leaderboard Cards */
+        .lb-header { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 15px 25px; font-weight: 700; background: #1e293b; color: white; border-radius: 12px; margin-bottom: 12px; }
+        .model-card { background: white; border-radius: 12px; margin-bottom: 10px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .model-trigger { display: grid; grid-template-columns: 2fr 1fr 1fr 40px; padding: 18px 25px; align-items: center; cursor: pointer; }
+        .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; padding: 15px; background: white; }
+        .subject-stat { border-left: 3px solid #e2e8f0; padding-left: 10px; }
+        .subject-name { font-size: 0.75rem; color: #64748b; display: block; text-transform: capitalize; }
+        .subject-val { font-weight: 700; font-size: 0.9rem; color: #334155; }
+        .section-title { font-weight: 800; font-size: 0.8rem; color: #64748b; margin: 20px 0 10px 0; text-transform: uppercase; border-bottom: 1px solid #eee; }
+        
+        /* Search */
+        .search-wrapper { max-width: 600px; margin: -30px auto 40px auto; position: relative; z-index: 10; }
+        .form-control-lg { border-radius: 12px; border: 1px solid #e2e8f0; padding-left: 45px; }
+        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+    </style>
+</head>
+<body>
+
+<div class="hero text-center shadow-sm">
+    <div class="container">
+        <h1 class="fw-bold text-dark">TMMLU+ Leaderboard</h1>
+        <p class="lead text-secondary">Advanced Benchmarking for Traditional Chinese Large Language Models</p>
+    </div>
+</div>
+
+<div class="container-fluid px-5">
+    <ul class="nav nav-tabs shadow-sm" id="mainTabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-leaderboard">Visual Leaderboard</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-comparison" onclick="initComparisonFilters()">Side-by-Side Comparison</button></li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-leaderboard">
+            <div class="search-wrapper shadow-sm">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="modelSearch" class="form-control form-control-lg" placeholder="Search models...">
+            </div>
+            <div class="row">
+                <div class="col-lg-6"><div class="chart-container shadow-sm"><div id="radar-chart"></div></div></div>
+                <div class="col-lg-6"><div class="chart-container shadow-sm"><div id="bar-chart"></div></div></div>
+            </div>
+            <div class="lb-header shadow-sm mt-4">
+                <div>Model Name</div>
+                <div class="text-center">Overall Acc</div>
+                <div class="text-center">TMMLU+ Avg</div>
+                <div></div>
+            </div>
+            <div id="leaderboard-container"></div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-comparison">
+            <div class="comparison-container shadow-lg">
+                <div class="filter-bar">
+                    <div>
+                        <label class="small fw-bold text-uppercase text-muted d-block mb-1">Display Category</label>
+                        <select id="catSelect" class="form-select" onchange="renderComparisonTable()">
+                            <option value="All">All Categories</option>
+                            <option value="Science">Science</option>
+                            <option value="Business">Business</option>
+                            <option value="Health & Med">Health & Med</option>
+                            <option value="Humanities">Humanities</option>
+                            <option value="Tech & Eng">Tech & Eng</option>
+                            <option value="General Benchmarks">General Benchmarks</option>
+                        </select>
+                    </div>
+                    <div class="flex-grow-1">
+                        <label class="small fw-bold text-uppercase text-muted d-block mb-1">Models to Compare</label>
+                        <div id="modelCheckboxes" class="d-flex gap-3 flex-wrap"></div>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height: 850px;">
+                    <table class="comp-table">
+                        <thead><tr id="comp-thead"></tr></thead>
+                        <tbody id="comp-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const CSV_PATH = 'https://raw.githubusercontent.com/MuhammadSaqlainAslam/tmmlu-leaderboard/main/results/benchmark.csv';
+
+const DISCIPLINE_MAP = {
+    "Science": ["fire_science", "secondary_physics", "advance_chemistry", "organic_chemistry", "physics", "junior_science_exam", "junior_chemistry", "engineering_math", "statistics_and_machine_learning", "tve_mathematics", "tve_natural_sciences"],
+    "Business": ["auditing", "financial_analysis", "insurance_studies", "business_management", "marketing_management", "management_accounting", "finance_banking", "taxation", "real_estate", "anti_money_laundering", "trust_practice", "official_document_management"],
+    "Health & Med": ["clinical_psychology", "pharmacy", "veterinary_pathology", "dentistry", "pharmacology", "veterinary_pharmacology", "basic_medical_science", "occupational_therapy_for_psychological_disorders", "optometry", "traditional_chinese_medicine_clinical_medicine"],
+    "Humanities": ["logic_reasoning", "education", "educational_psychology", "human_behavior", "geography_of_taiwan", "jce_humanities", "chinese_language_and_literature", "junior_chinese_exam", "politic_science", "three_principles_of_people", "national_protection", "general_principles_of_law", "administrative_law", "introduction_to_law", "taiwanese_hokkien", "music", "education_(profession_level)"],
+    "Tech & Eng": ["computer_science", "mechanical", "nautical_science", "technical", "agriculture", "culinary_skills", "tve_design"]
+};
+
+// Exclude these from scores
+const METADATA_METRICS = ['total_samples', 'correct_samples', 'total', 'evaluated', 'task_accuracies'];
+
+let globalModels = [];
+let rawDataRows = [];
+
+Papa.parse(CSV_PATH, {
+    download: true, header: true, dynamicTyping: true,
+    complete: function(res) { 
+        rawDataRows = res.data.filter(r => r.task_name && r.task_name !== 'mean_of_TMMLU+');
+        globalModels = processData(res.data);
+        renderLeaderboard(globalModels);
+        drawCharts(globalModels);
+    }
+});
+
+function processData(data) {
+    const modelNames = Object.keys(data[0]).filter(k => k !== 'task_name' && k !== 'metric');
+    return modelNames.map(name => {
+        let mData = { name, disciplines: {}, general: {}, allTaskScores: {} };
+        data.forEach(row => {
+            const val = row[name];
+            if (val === 0 || val === null || isNaN(val) || !row.task_name || row.task_name === 'mean_of_TMMLU+') return;
+            
+            const metricL = row.metric.toLowerCase();
+            if (METADATA_METRICS.includes(metricL)) return;
+
+            // 1. Identify Category
+            let category = "General Benchmarks";
+            for (let [cat, keywords] of Object.entries(DISCIPLINE_MAP)) {
+                if (keywords.some(k => row.task_name.toLowerCase().includes(k.toLowerCase()))) {
+                    category = cat; break;
+                }
+            }
+
+            // 2. Store for expansion views
+            const entry = { task: row.task_name, metric: row.metric, score: val };
+            if (category === "General Benchmarks") {
+                if (!mData.general[row.task_name]) mData.general[row.task_name] = [];
+                mData.general[row.task_name].push(entry);
+            } else {
+                if (!mData.disciplines[category]) mData.disciplines[category] = {};
+                if (!mData.disciplines[category][row.task_name]) mData.disciplines[category][row.task_name] = [];
+                mData.disciplines[category][row.task_name].push(entry);
+            }
+
+            // 3. Track Primary metric for Averages calculation (to avoid double counting AIEC/XSum sub-metrics)
+            const isPrimary = metricL.includes('accuracy') || metricL.includes('match') || metricL === 'total_score' || metricL === 'rougel';
+            if (isPrimary && (!mData.allTaskScores[row.task_name] || metricL === 'total_score')) {
+                mData.allTaskScores[row.task_name] = val;
+            }
+        });
+
+        const taskScoresArr = Object.values(mData.allTaskScores);
+        mData.overall = taskScoresArr.length ? (taskScoresArr.reduce((a,b)=>a+b,0)/taskScoresArr.length) : 0;
+        
+        let dAvgs = Object.keys(DISCIPLINE_MAP).map(cat => {
+            if (!mData.disciplines[cat]) return null;
+            const catTaskScores = Object.values(mData.disciplines[cat]).map(arr => arr[0].score); // simplified primary
+            return catTaskScores.reduce((a,b)=>a+b,0)/catTaskScores.length;
+        }).filter(v => v !== null);
+        
+        mData.tmmlu_avg = dAvgs.length ? (dAvgs.reduce((a,b)=>a+b,0)/dAvgs.length) : 0;
+        return mData;
+    }).sort((a,b) => b.overall - a.overall);
+}
+
+function initComparisonFilters() {
+    const container = document.getElementById('modelCheckboxes');
+    if (container.innerHTML !== "") return;
+    globalModels.forEach((m, i) => {
+        container.innerHTML += `<div class="form-check form-check-inline"><input class="form-check-input model-chk" type="checkbox" id="m${i}" value="${m.name}" checked onchange="renderComparisonTable()"><label class="form-check-label small fw-bold" for="m${i}">${m.name}</label></div>`;
+    });
+    renderComparisonTable();
+}
+
+function renderComparisonTable() {
+    const selectedModels = Array.from(document.querySelectorAll('.model-chk:checked')).map(c => c.value);
+    const selectedCat = document.getElementById('catSelect').value;
+    const thead = document.getElementById('comp-thead');
+    const tbody = document.getElementById('comp-tbody');
+
+    thead.innerHTML = `<th class="task-name-col">Benchmark Task / Subject</th>`;
+    selectedModels.forEach(m => thead.innerHTML += `<th class="text-center">${m}</th>`);
+
+    tbody.innerHTML = "";
+    rawDataRows.forEach(row => {
+        if (METADATA_METRICS.includes(row.metric.toLowerCase())) return;
+
+        let taskCat = "General Benchmarks";
+        for (let [cat, keywords] of Object.entries(DISCIPLINE_MAP)) {
+            if (keywords.some(k => row.task_name.toLowerCase().includes(k.toLowerCase()))) { taskCat = cat; break; }
+        }
+        if (selectedCat !== 'All' && taskCat !== selectedCat) return;
+
+        const cleanName = row.task_name.replace('TCEval-v2/', '').replace('tmmluplus-', '').replace(/_/g, ' ');
+        let rowHtml = `<tr><td class="task-name-col text-capitalize">${cleanName} <br><small class="text-muted" style="font-size:0.65rem">${row.metric}</small></td>`;
+        
+        let rowScores = selectedModels.map(m => row[m] || 0);
+        let maxS = Math.max(...rowScores);
+        selectedModels.forEach(m => {
+            const s = row[m] || 0;
+            const isBest = s > 0 && s === maxS && selectedModels.length > 1;
+            rowHtml += `<td class="score-val ${isBest ? 'best-score' : ''}">${s > 0 ? (s * 100).toFixed(1) + '%' : '-'}</td>`;
+        });
+        tbody.innerHTML += rowHtml + `</tr>`;
+    });
+}
+
+function renderLeaderboard(data) {
+    const container = document.getElementById('leaderboard-container');
+    container.innerHTML = data.map((m, i) => {
+        let discHTML = Object.entries(m.disciplines).map(([cat, tasks]) => {
+            const taskList = Object.entries(tasks).map(([tn, metrics]) => `
+                <div class="subject-stat">
+                    <span class="subject-name">${tn.split('-').pop().replace(/_/g, ' ')}</span>
+                    ${metrics.map(me => `<span class="subject-val d-block" style="font-size:0.7rem">${(me.score*100).toFixed(1)}% <small class="text-muted">${me.metric}</small></span>`).join('')}
+                </div>`).join('');
+            return `<div class="section-title">${cat}</div><div class="subject-grid">${taskList}</div>`;
+        }).join("");
+
+        let genHTML = Object.entries(m.general).map(([tn, metrics]) => `
+            <div class="subject-stat">
+                <span class="subject-name">${tn.replace(/_/g, ' ')}</span>
+                ${metrics.map(me => `<span class="subject-val d-block" style="font-size:0.7rem">${(me.score*100).toFixed(1)}% <small class="text-muted">${me.metric}</small></span>`).join('')}
+            </div>`).join('');
+
+        return `
+        <div class="model-card shadow-sm">
+            <div class="model-trigger" data-bs-toggle="collapse" data-bs-target="#m-exp-${i}">
+                <div class="fw-bold">${m.name}</div>
+                <div class="text-center text-primary fw-bold">${(m.overall*100).toFixed(1)}%</div>
+                <div class="text-center fw-bold text-secondary">${(m.tmmlu_avg*100).toFixed(1)}%</div>
+                <div class="text-end text-muted small">Rank ${i+1} ▾</div>
+            </div>
+            <div id="m-exp-${i}" class="collapse p-4 border-top bg-light">
+                <div class="section-title">General Benchmarks</div>
+                <div class="subject-grid">${genHTML || '<p class="text-muted small">None</p>'}</div>
+                ${discHTML}
+            </div>
+        </div>`;
+    }).join("");
+}
+
+function drawCharts(data) {
+    const cats = Object.keys(DISCIPLINE_MAP);
+    const top5 = data.slice(0, 5);
+    const radarTraces = top5.map(m => ({
+        type: 'scatterpolar', r: cats.map(c => {
+            if (!m.disciplines[c]) return 0;
+            const vals = Object.values(m.disciplines[c]).map(arr => arr[0].score);
+            return vals.reduce((a,b)=>a+b,0)/vals.length;
+        }), theta: cats, fill: 'toself', name: m.name
+    }));
+    Plotly.newPlot('radar-chart', radarTraces, { title: 'Discipline Radar Map', polar: { radialaxis: { range: [0, 1], tickformat: ',.0%' } }, margin: { t: 60, b: 40, l: 40, r: 40 }, legend: { orientation: 'h', y: -0.2 } });
+
+    const barTraces = top5.map(m => ({
+        x: cats, y: cats.map(c => {
+            if (!m.disciplines[c]) return 0;
+            const vals = Object.values(m.disciplines[c]).map(arr => arr[0].score);
+            return vals.reduce((a,b)=>a+b,0)/vals.length;
+        }), type: 'bar', name: m.name
+    }));
+    Plotly.newPlot('bar-chart', barTraces, { title: 'Mean Performance per Category', barmode: 'group', yaxis: { range: [0, 1], tickformat: ',.0%' }, legend: { orientation: 'h', y: -0.4 } });
+}
+
+document.getElementById('modelSearch').addEventListener('input', function(e) {
+    const term = e.target.value.toLowerCase();
+    renderLeaderboard(globalModels.filter(m => m.name.toLowerCase().includes(term)));
+});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
