@@ -291,6 +291,7 @@ function setSort(field) {
     const query = document.getElementById('modelSearch').value.toLowerCase();
     const filtered = globalModels.filter(m => m.name.toLowerCase().includes(query));
     renderLeaderboard(filtered);
+    drawCharts(filtered);
 }
 
 function sortedModels(arr) {
@@ -455,37 +456,63 @@ function renderComparisonTable() {
 }
 
 // ── Charts ─────────────────────────────────────────────────────────────────
+const CHART_COLORS      = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed'];
+const CHART_FILL_COLORS = ['rgba(37,99,235,0.12)','rgba(22,163,74,0.12)','rgba(217,119,6,0.12)','rgba(220,38,38,0.12)','rgba(124,58,237,0.12)'];
+
+function getCatAvg(m, cat) {
+    if (!m.disciplines[cat]) return null;
+    const vals = Object.values(m.disciplines[cat]).map(arr => arr[0].score);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+
 function drawCharts(data) {
     const cats = Object.keys(DISCIPLINE_MAP);
-    const top5 = sortedModels(data).slice(0, 5);
+    const chartModels = sortedModels(data).slice(0, 5);
 
-    const radarTraces = top5.map(m => ({
-        type: 'scatterpolar', r: cats.map(c => {
-            if (!m.disciplines[c]) return 0;
-            const vals = Object.values(m.disciplines[c]).map(arr => arr[0].score);
-            return vals.reduce((a,b)=>a+b,0)/vals.length;
-        }), theta: cats, fill: 'toself', name: m.name
+    // ── Radar ──────────────────────────────────────────────────────────────
+    const radarTraces = chartModels.map((m, i) => ({
+        type: 'scatterpolar',
+        r: cats.map(c => getCatAvg(m, c)),          // null = gap, not misleading 0
+        theta: cats,
+        fill: 'toself',
+        fillcolor: CHART_FILL_COLORS[i % CHART_FILL_COLORS.length],
+        line: { color: CHART_COLORS[i % CHART_COLORS.length], width: 2 },
+        name: m.name,
+        hovertemplate: '<b>%{theta}</b><br>%{r:.1%}<extra>' + m.name + '</extra>'
     }));
-    Plotly.newPlot('radar-chart', radarTraces, {
-        title: 'Discipline Radar Map',
-        polar: { radialaxis: { range: [0, 1], tickformat: ',.0%' } },
-        margin: { t: 60, b: 40, l: 40, r: 40 },
-        legend: { orientation: 'h', y: -0.2 },
+
+    Plotly.react('radar-chart', radarTraces, {
+        title: { text: 'Discipline Radar Map', font: { size: 15 } },
+        polar: {
+            radialaxis: { range: [0, 1], tickformat: ',.0%', tickfont: { size: 10 } }
+        },
+        margin: { t: 60, b: 80, l: 60, r: 60 },
+        legend: { orientation: 'h', y: -0.28, x: 0.5, xanchor: 'center' },
         responsive: true
     }, { responsive: true });
 
-    const barTraces = top5.map(m => ({
-        x: cats, y: cats.map(c => {
-            if (!m.disciplines[c]) return 0;
-            const vals = Object.values(m.disciplines[c]).map(arr => arr[0].score);
-            return vals.reduce((a,b)=>a+b,0)/vals.length;
-        }), type: 'bar', name: m.name
+    // ── Horizontal Bar ─────────────────────────────────────────────────────
+    // Auto-tighten x-axis: floor min score to nearest 0.05 then subtract 0.05
+    const allScores = chartModels.flatMap(m => cats.map(c => getCatAvg(m, c))).filter(v => v !== null);
+    const minScore  = allScores.length ? Math.max(0, Math.floor((Math.min(...allScores) - 0.05) * 20) / 20) : 0;
+
+    const barTraces = chartModels.map((m, i) => ({
+        y: cats,
+        x: cats.map(c => getCatAvg(m, c)),          // null = gap, not misleading 0
+        type: 'bar',
+        orientation: 'h',
+        name: m.name,
+        marker: { color: CHART_COLORS[i % CHART_COLORS.length] },
+        hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>' + m.name + '</extra>'
     }));
-    Plotly.newPlot('bar-chart', barTraces, {
-        title: 'Mean Performance per Category',
+
+    Plotly.react('bar-chart', barTraces, {
+        title: { text: 'Mean Accuracy per Discipline', font: { size: 15 } },
         barmode: 'group',
-        yaxis: { range: [0, 1], tickformat: ',.0%' },
-        legend: { orientation: 'h', y: -0.4 },
+        xaxis: { range: [minScore, 1], tickformat: ',.0%', title: 'Mean Accuracy', automargin: true },
+        yaxis: { automargin: true },
+        margin: { t: 60, b: 60, l: 140, r: 20 },
+        legend: { orientation: 'h', y: -0.22, x: 0.5, xanchor: 'center' },
         responsive: true
     }, { responsive: true });
 }
@@ -498,7 +525,9 @@ window.addEventListener('resize', () => {
 
 // ── Search ─────────────────────────────────────────────────────────────────
 document.getElementById('modelSearch').addEventListener('input', function(e) {
-    renderLeaderboard(globalModels.filter(m => m.name.toLowerCase().includes(e.target.value.toLowerCase())));
+    const filtered = globalModels.filter(m => m.name.toLowerCase().includes(e.target.value.toLowerCase()));
+    renderLeaderboard(filtered);
+    drawCharts(filtered);
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
