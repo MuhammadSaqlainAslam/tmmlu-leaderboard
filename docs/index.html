@@ -167,7 +167,7 @@
                         </select>
                     </div>
                     <div class="flex-grow-1">
-                        <label class="small fw-bold text-uppercase text-muted d-block mb-1">Models to Compare (Intersection Only)</label>
+                        <label class="small fw-bold text-uppercase text-muted d-block mb-1">Models to Compare</label>
                         <div id="modelCheckboxes" class="d-flex gap-3 flex-wrap"></div>
                     </div>
                     <div class="sel-btns">
@@ -417,8 +417,9 @@ function renderComparisonTable() {
     rawDataRows.forEach(row => {
         if (METADATA_METRICS.includes(row.metric.toLowerCase())) return;
 
-        const hasAllScores = selectedModels.every(m => row[m] && row[m] > 0);
-        if (!hasAllScores) return;
+        // Show row if at least one selected model has a score
+        const hasAnyScore = selectedModels.some(m => row[m] != null && row[m] !== '' && !isNaN(row[m]) && row[m] > 0);
+        if (!hasAnyScore) return;
 
         let taskCat = 'General Benchmarks';
         for (let [cat, keywords] of Object.entries(DISCIPLINE_MAP)) {
@@ -431,13 +432,19 @@ function renderComparisonTable() {
         const cleanName = row.task_name.replace('TCEval-v2/', '').replace('tmmluplus-', '').replace(/_/g, ' ');
         let rowHtml = `<tr><td class="task-name-col text-capitalize">${cleanName}<br><small class="text-muted" style="font-size:0.65rem">${row.metric}</small></td>`;
 
-        let rowScores = selectedModels.map(m => row[m] || 0);
-        let maxS = Math.max(...rowScores);
+        // Find best score only among models that actually have data
+        const presentScores = selectedModels.map(m => row[m]).filter(v => v != null && !isNaN(v) && v > 0);
+        const maxS = presentScores.length ? Math.max(...presentScores) : -1;
 
         selectedModels.forEach(m => {
-            const s = row[m] || 0;
-            const isBest = s > 0 && s === maxS && selectedModels.length > 1;
-            rowHtml += `<td class="score-val ${isBest ? 'best-score' : ''}">${(s * 100).toFixed(1)}%</td>`;
+            const raw = row[m];
+            const hasScore = raw != null && raw !== '' && !isNaN(raw) && raw > 0;
+            if (!hasScore) {
+                rowHtml += `<td class="score-val text-muted" style="color:#cbd5e1!important">—</td>`;
+            } else {
+                const isBest = raw === maxS && selectedModels.length > 1;
+                rowHtml += `<td class="score-val ${isBest ? 'best-score' : ''}">${(raw * 100).toFixed(1)}%</td>`;
+            }
         });
         tbody.innerHTML += rowHtml + `</tr>`;
     });
