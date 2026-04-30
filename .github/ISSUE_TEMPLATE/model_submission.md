@@ -8,7 +8,12 @@ assignees: ''
 ---
 
 ### 📝 Model Information
-- **Model Name:** - **Organization/Author:** - **Model Link (Hugging Face/Paper):** - **Date of Evaluation:** ### 📊 Benchmark Scores
+- **Model Name:**
+- **Organization/Author:**
+- **Model Link (Hugging Face/Paper):**
+- **Date of Evaluation:**
+
+### 📊 Benchmark Scores
 Please provide the accuracy for the following major categories (or attach a CSV):
 
 | Category | Score (%) |

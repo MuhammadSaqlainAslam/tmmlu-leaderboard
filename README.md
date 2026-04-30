@@ -59,7 +59,7 @@ The dashboard offers two views:
 We welcome contributions from the research community!
 
 1. **Prepare your data** — ensure your results follow the format in `results/benchmark.csv` (rows are `task_name` + `metric`, columns are model names, values are accuracy decimals 0–1).
-2. **Submit an Issue** — open a [Model Submission issue](https://github.com/MuhammadSaqlainAslam/tmmlu-leaderboard/issues/new?template=model_submission.md) and fill in the template.
+2. **Submit an Issue** — open a [Model Submission issue](https://github.com/MuhammadSaqlainAslam/tmmlu-leaderboard/issues/new/choose) and select the **Model Submission** template.
 3. **Pull Request** — fork this repo, add your model's column to `benchmark.csv`, and submit a PR.
 
 ## 📄 Citation
