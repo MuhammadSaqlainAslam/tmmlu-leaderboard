@@ -533,16 +533,23 @@ function drawCharts(data) {
 
     // Bar traces follow chartModels order (row 1 = FoxBrain v1.2, row 2 = FoxBrain v1.5, etc.)
     // legendrank forces legend to match row order; traceorder:'normal' keeps bar group order
-    const barTraces = chartModels.map((m, i) => ({
-        y: cats,
-        x: cats.map(c => getCatAvg(m, c)),
-        type: 'bar',
-        orientation: 'h',
-        name: m.name,
-        legendrank: i + 1,
-        marker: { color: CHART_COLORS[i % CHART_COLORS.length] },
-        hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>' + m.name + '</extra>'
-    }));
+    const barTraces = chartModels.map((m, i) => {
+        const xVals = cats.map(c => getCatAvg(m, c));
+        return {
+            y: cats,
+            x: xVals,
+            type: 'bar',
+            orientation: 'h',
+            name: m.name,
+            legendrank: i + 1,
+            marker: { color: CHART_COLORS[i % CHART_COLORS.length] },
+            text: xVals.map(v => v !== null ? (v * 100).toFixed(1) + '%' : ''),
+            textposition: 'outside',
+            textfont: { size: 9, color: CHART_COLORS[i % CHART_COLORS.length] },
+            cliponaxis: false,
+            hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>' + m.name + '</extra>'
+        };
+    });
 
     Plotly.react('bar-chart', barTraces, {
         title: { text: 'Mean Accuracy per Discipline', font: { size: 15 } },
