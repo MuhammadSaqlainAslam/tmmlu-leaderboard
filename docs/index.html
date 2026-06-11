@@ -536,14 +536,19 @@ function drawCharts(data) {
     // legendrank preserves correct legend order (row 1 first in legend).
     const barTraces = [...chartModels].reverse().map((m) => {
         const origIdx = chartModels.indexOf(m);
+        const xVals = cats.map(c => getCatAvg(m, c));
         return {
             y: cats,
-            x: cats.map(c => getCatAvg(m, c)),
+            x: xVals,
             type: 'bar',
             orientation: 'h',
             name: m.name,
             legendrank: origIdx + 1,
             marker: { color: CHART_COLORS[origIdx % CHART_COLORS.length] },
+            text: xVals.map(v => v !== null ? (v * 100).toFixed(1) + '%' : ''),
+            textposition: 'inside',
+            insidetextanchor: 'end',
+            textfont: { size: 10, color: '#ffffff', family: 'Arial' },
             hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>' + m.name + '</extra>'
         };
     });
