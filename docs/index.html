@@ -546,9 +546,9 @@ function drawCharts(data) {
             legendrank: origIdx + 1,
             marker: { color: CHART_COLORS[origIdx % CHART_COLORS.length] },
             text: xVals.map(v => v !== null ? (v * 100).toFixed(1) + '%' : ''),
-            textposition: 'inside',
-            insidetextanchor: 'end',
-            textfont: { size: 13, color: '#ffffff', family: 'Arial Bold' },
+            textposition: 'outside',
+            textfont: { size: 13, color: CHART_COLORS[origIdx % CHART_COLORS.length], family: 'Arial' },
+            cliponaxis: false,
             hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>' + m.name + '</extra>'
         };
     });
