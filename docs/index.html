@@ -531,22 +531,19 @@ function drawCharts(data) {
     const allScores = chartModels.flatMap(m => cats.map(c => getCatAvg(m, c))).filter(v => v !== null);
     const minScore  = allScores.length ? Math.max(0, Math.floor((Math.min(...allScores) - 0.05) * 20) / 20) : 0;
 
-    // Bar traces follow chartModels order (row 1 = FoxBrain v1.2, row 2 = FoxBrain v1.5, etc.)
-    // legendrank forces legend to match row order; traceorder:'normal' keeps bar group order
-    const barTraces = chartModels.map((m, i) => {
-        const xVals = cats.map(c => getCatAvg(m, c));
+    // Bar traces: reversed so Plotly renders row 1 at top, row 2 below, etc.
+    // Plotly draws grouped horizontal bars bottom-to-top, so we reverse trace order.
+    // legendrank preserves correct legend order (row 1 first in legend).
+    const barTraces = [...chartModels].reverse().map((m) => {
+        const origIdx = chartModels.indexOf(m);
         return {
             y: cats,
-            x: xVals,
+            x: cats.map(c => getCatAvg(m, c)),
             type: 'bar',
             orientation: 'h',
             name: m.name,
-            legendrank: i + 1,
-            marker: { color: CHART_COLORS[i % CHART_COLORS.length] },
-            text: xVals.map(v => v !== null ? (v * 100).toFixed(1) + '%' : ''),
-            textposition: 'outside',
-            textfont: { size: 9, color: CHART_COLORS[i % CHART_COLORS.length] },
-            cliponaxis: false,
+            legendrank: origIdx + 1,
+            marker: { color: CHART_COLORS[origIdx % CHART_COLORS.length] },
             hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>' + m.name + '</extra>'
         };
     });
