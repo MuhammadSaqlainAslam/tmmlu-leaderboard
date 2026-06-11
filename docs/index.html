@@ -488,7 +488,21 @@ function getCatAvg(m, cat) {
 
 function drawCharts(data) {
     const cats = Object.keys(DISCIPLINE_MAP);
-    const chartModels = sortedModels(data).slice(0, 5);
+    // Fixed display order for radar and bar charts
+    const CHART_MODEL_ORDER = [
+        'FoxBrain_v1.2_70B_0630',
+        'FoxBrain_v1.5_20251203_remove_repeat_lora',
+        'NVIDIA-Nemotron-3-Super-120B-A12B-BF16',
+        'NVIDIA-Nemotron-3-Nano-30B-A3B-BF16',
+        'gemma-4-31B-it',
+        'Gemma-3-TAIDE-12b-Chat-ZH-TW-Prompt',
+        'gpt-oss-20b',
+    ];
+    const dataMap = Object.fromEntries(data.map(m => [m.name, m]));
+    const chartModels = CHART_MODEL_ORDER
+        .filter(name => dataMap[name])
+        .map(name => dataMap[name])
+        .slice(0, 5);
 
     // ── Radar ──────────────────────────────────────────────────────────────
     const radarTraces = chartModels.map((m, i) => ({
