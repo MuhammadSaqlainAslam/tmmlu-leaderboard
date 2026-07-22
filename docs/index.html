@@ -836,96 +836,100 @@ function drawCharts(data) {
     drawBarChart(chartModels);
 }
 
-// ── Standalone bar chart renderer ──────────────────────────────────────────
-// Disciplines (y-axis) sorted: lowest mean at top, highest at bottom.
-// Model bar order within each group: preserved as passed in (original order).
+// -- Standalone bar chart renderer
+// Each discipline group: bars sorted lowest score at top, highest at bottom.
 function drawBarChart(models) {
-    const cats = Object.keys(DISCIPLINE_MAP);
+    var cats = Object.keys(DISCIPLINE_MAP);
     if (!models || !models.length) return;
 
-    // Sort disciplines by mean across all models
-    // descending array → Plotly puts last item at top → lowest at top ✓
-    const discScores = cats.map(c => {
-        const vals = models.map(m => getCatAvg(m, c)).filter(v => v !== null);
-        return {
-            cat: c,
-            mean: vals.length ? vals.reduce((a,b) => a+b, 0)/vals.length : 0
-        };
+    // Sort disciplines by mean score descending (lowest discipline at top)
+    var discMeans = cats.map(function(c) {
+        var vals = models.map(function(m) { return getCatAvg(m, c); }).filter(function(v) { return v !== null; });
+        return { cat: c, mean: vals.length ? vals.reduce(function(a,b){return a+b;},0)/vals.length : 0 };
     });
-    discScores.sort((a, b) => b.mean - a.mean); // descending
-    const sortedCats = discScores.map(d => d.cat);
+    discMeans.sort(function(a,b) { return b.mean - a.mean; });
 
-    // x-axis tighten
-    const allScores = models
-        .flatMap(m => cats.map(c => getCatAvg(m, c)))
-        .filter(v => v !== null);
-    const minScore = allScores.length
-        ? Math.max(0, Math.floor((Math.min(...allScores) - 0.05) * 20) / 20)
-        : 0;
-
-    // Consistent color per model name — same color regardless of selection
-    const COLOR_MAP = [
+    var COLOR_MAP = [
         'FoxBrain_v1.2_70B_0630',
         'FoxBrain_v1.5_20251203_remove_repeat_lora',
         'NVIDIA-Nemotron-3-Super-120B-A12B-BF16',
         'NVIDIA-Nemotron-3-Nano-30B-A3B-BF16',
         'gemma-4-31B-it',
         'gpt-oss-20b',
-        'Gemma-3-TAIDE-12b-Chat-ZH-TW-Prompt',
+        'Gemma-3-TAIDE-12b-Chat-ZH-TW-Prompt'
     ];
 
-    // Build traces in ORIGINAL model order (no sorting of models)
-    // Plotly renders traces top→bottom in the order added
-    // Original order: FoxBrain_v1.2 first = top bar ✓
-    const barTraces = models.map((m, origIdx) => {
-        const ci = COLOR_MAP.indexOf(m.name);
-        const color = CHART_COLORS[
-            ci >= 0 ? ci % CHART_COLORS.length : origIdx % CHART_COLORS.length
-        ];
-        const xVals = sortedCats.map(c => getCatAvg(m, c));
-        return {
-            y: sortedCats,
-            x: xVals,
-            type: 'bar',
-            orientation: 'h',
-            name: m.name,
-            legendrank: origIdx + 1,
-            marker: { color },
-            text: xVals.map(v => v !== null ? (v * 100).toFixed(1) + '%' : ''),
-            textposition: 'outside',
-            textfont: { size: 13, color, family: 'Arial' },
-            cliponaxis: false,
-            hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>' + m.name + '</extra>'
-        };
+    // Build flat rows: per discipline, sort models by score ascending (lowest first)
+    var yLabels = [], xVals = [], barColors = [], texts = [], hoverNames = [];
+    discMeans.forEach(function(d) {
+        var cat = d.cat;
+        var modelScores = models.map(function(m) {
+            return { model: m, score: getCatAvg(m, cat) };
+        });
+        // Sort ascending: lowest score first = top bar in this group
+        modelScores.sort(function(a, b) {
+            if (a.score === null) return -1;
+            if (b.score === null) return 1;
+            return a.score - b.score;
+        });
+        modelScores.forEach(function(item) {
+            var m = item.model;
+            var shortName = m.name.length > 20 ? m.name.substring(0,20) + '...' : m.name;
+            yLabels.push(cat + ' | ' + shortName);
+            xVals.push(item.score);
+            var ci = COLOR_MAP.indexOf(m.name);
+            barColors.push(CHART_COLORS[ci >= 0 ? ci % CHART_COLORS.length : 0]);
+            texts.push(item.score !== null ? (item.score * 100).toFixed(1) + '%' : '');
+            hoverNames.push(m.name);
+        });
     });
 
-    Plotly.react('bar-chart', barTraces, {
+    // Reverse so Plotly renders top-to-bottom correctly
+    var yRev = yLabels.slice().reverse();
+    var xRev = xVals.slice().reverse();
+    var cRev = barColors.slice().reverse();
+    var tRev = texts.slice().reverse();
+    var hRev = hoverNames.slice().reverse();
+
+    var allScores = xVals.filter(function(v){ return v !== null; });
+    var minScore = allScores.length ? Math.max(0, Math.floor((Math.min.apply(null, allScores) - 0.05) * 20) / 20) : 0;
+
+    var trace = {
+        y: yRev, x: xRev, type: 'bar', orientation: 'h',
+        marker: { color: cRev },
+        text: tRev, textposition: 'outside',
+        textfont: { size: 12, color: cRev, family: 'Arial' },
+        cliponaxis: false, customdata: hRev,
+        hovertemplate: '<b>%{customdata}</b><br>%{x:.1%}<extra></extra>',
+        showlegend: false
+    };
+
+    // Invisible legend traces so legend still shows
+    var legendTraces = models.map(function(m, i) {
+        var ci = COLOR_MAP.indexOf(m.name);
+        var color = CHART_COLORS[ci >= 0 ? ci % CHART_COLORS.length : i % CHART_COLORS.length];
+        return { y: [null], x: [null], type: 'bar', orientation: 'h',
+            name: m.name, marker: { color: color },
+            showlegend: true, legendrank: i + 1, hoverinfo: 'skip' };
+    });
+
+    var chartHeight = Math.max(300, yRev.length * 26 + 140);
+    Plotly.react('bar-chart', [trace].concat(legendTraces), {
         title: { text: 'Mean Accuracy per Discipline', font: { size: 15 } },
-        barmode: 'group',
-        xaxis: {
-            range: [minScore, 1], tickformat: ',.0%',
-            title: 'Mean Accuracy', automargin: true
-        },
-        yaxis: {
-            automargin: true,
-            categoryorder: 'array',
-            categoryarray: sortedCats
-        },
-        legend: {
-            orientation: 'h', y: -0.22,
-            x: 0.5, xanchor: 'center', traceorder: 'normal'
-        },
-        margin: { t: 60, b: 60, l: 140, r: 20 },
-        responsive: true
+        xaxis: { range: [minScore, 1], tickformat: ',.0%', title: 'Mean Accuracy', automargin: true },
+        yaxis: { automargin: true, tickfont: { size: 11 } },
+        legend: { orientation: 'h', y: -0.12, x: 0.5, xanchor: 'center' },
+        margin: { t: 60, b: 80, l: 200, r: 40 },
+        height: chartHeight, responsive: true,
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
     }, { responsive: true });
 
-    const barCaption = document.getElementById('bar-caption');
+    var barCaption = document.getElementById('bar-caption');
     if (barCaption) {
-        const minPct = (minScore * 100).toFixed(0);
+        var minPct = (minScore * 100).toFixed(0);
         barCaption.innerHTML = minScore > 0
-            ? `Mean accuracy per discipline, sorted lowest → highest. ` +
-              `<strong>Note: X-axis starts at ${minPct}%, not 0%.</strong>`
-            : `Mean accuracy per discipline, sorted lowest → highest (lowest at top).`;
+            ? 'Within each discipline, bars sorted lowest to highest. <strong>X-axis starts at ' + minPct + '%, not 0%.</strong>'
+            : 'Within each discipline, bars sorted lowest to highest score.';
     }
 }
 
