@@ -776,8 +776,8 @@ function renderComparisonTable() {
 }
 
 // ── Charts ─────────────────────────────────────────────────────────────────
-const CHART_COLORS      = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed'];
-const CHART_FILL_COLORS = ['rgba(37,99,235,0.12)','rgba(22,163,74,0.12)','rgba(217,119,6,0.12)','rgba(220,38,38,0.12)','rgba(124,58,237,0.12)'];
+const CHART_COLORS      = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];
+const CHART_FILL_COLORS = ['rgba(37,99,235,0.12)','rgba(22,163,74,0.12)','rgba(217,119,6,0.12)','rgba(220,38,38,0.12)','rgba(124,58,237,0.12)','rgba(8,145,178,0.12)'];
 
 function getCatAvg(m, cat) {
     if (!m.disciplines[cat]) return null;
@@ -855,7 +855,25 @@ function drawCharts(data) {
         title: { text: 'Mean Accuracy per Discipline', font: { size: 15 } },
         barmode: 'group',
         xaxis: { range: [minScore, 1], tickformat: ',.0%', title: 'Mean Accuracy', automargin: true },
-        yaxis: { automargin: true, categoryorder: 'array', categoryarray: [...cats].reverse() },
+        yaxis: {
+            automargin: true,
+            categoryorder: 'array',
+            categoryarray: (() => {
+                const disciplineScores = cats.map(c => {
+                    const vals = chartModels
+                        .map(m => getCatAvg(m, c))
+                        .filter(v => v !== null);
+                    return {
+                        cat: c,
+                        mean: vals.length
+                            ? vals.reduce((a,b) => a+b, 0) / vals.length
+                            : 0
+                    };
+                });
+                disciplineScores.sort((a,b) => a.mean - b.mean);
+                return disciplineScores.reverse().map(d => d.cat);
+            })()
+        },
         legend: { orientation: 'h', y: -0.22, x: 0.5, xanchor: 'center', traceorder: 'normal' },
         margin: { t: 60, b: 60, l: 140, r: 20 },
         responsive: true
