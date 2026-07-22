@@ -776,8 +776,8 @@ function renderComparisonTable() {
 }
 
 // ── Charts ─────────────────────────────────────────────────────────────────
-const CHART_COLORS      = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];
-const CHART_FILL_COLORS = ['rgba(37,99,235,0.12)','rgba(22,163,74,0.12)','rgba(217,119,6,0.12)','rgba(220,38,38,0.12)','rgba(124,58,237,0.12)','rgba(8,145,178,0.12)'];
+const CHART_COLORS      = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#ea580c'];
+const CHART_FILL_COLORS = ['rgba(37,99,235,0.12)','rgba(22,163,74,0.12)','rgba(217,119,6,0.12)','rgba(220,38,38,0.12)','rgba(124,58,237,0.12)','rgba(234,88,12,0.12)'];
 
 function getCatAvg(m, cat) {
     if (!m.disciplines[cat]) return null;
@@ -870,8 +870,10 @@ function drawCharts(data) {
                             : 0
                     };
                 });
-                disciplineScores.sort((a,b) => a.mean - b.mean);
-                return disciplineScores.reverse().map(d => d.cat);
+                // Sort DESCENDING so Plotly renders lowest at TOP
+                // (Plotly horizontal bars: array[0]=bottom, array[last]=top)
+                disciplineScores.sort((a,b) => b.mean - a.mean);
+                return disciplineScores.map(d => d.cat);
             })()
         },
         legend: { orientation: 'h', y: -0.22, x: 0.5, xanchor: 'center', traceorder: 'normal' },
