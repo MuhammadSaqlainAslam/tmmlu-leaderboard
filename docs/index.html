@@ -830,69 +830,108 @@ function drawCharts(data) {
     }, { responsive: true });
 
     // ── Horizontal Bar ─────────────────────────────────────────────────────
-    // Auto-tighten x-axis: floor min score to nearest 0.05 then subtract 0.05
-    const allScores = chartModels.flatMap(m => cats.map(c => getCatAvg(m, c))).filter(v => v !== null);
-    const minScore  = allScores.length ? Math.max(0, Math.floor((Math.min(...allScores) - 0.05) * 20) / 20) : 0;
+    drawBarChart(chartModels);
+}
 
-    // Bar traces: reversed so Plotly renders row 1 at top, row 2 below, etc.
-    // Plotly draws grouped horizontal bars bottom-to-top, so we reverse trace order.
-    // legendrank preserves correct legend order (row 1 first in legend).
-    const barTraces = [...chartModels].reverse().map((m) => {
-        const origIdx = chartModels.indexOf(m);
-        const xVals = cats.map(c => getCatAvg(m, c));
+// ── Standalone bar chart renderer ──────────────────────────────────────────
+// Accepts any array of model objects. Sorts disciplines by mean score
+// across those models: lowest at TOP, highest at BOTTOM.
+// Called from drawCharts() and renderComparisonTable().
+function drawBarChart(models) {
+    const cats = Object.keys(DISCIPLINE_MAP);
+    if (!models || !models.length) return;
+
+    // x-axis: tighten to data range
+    const allScores = models
+        .flatMap(m => cats.map(c => getCatAvg(m, c)))
+        .filter(v => v !== null);
+    const minScore = allScores.length
+        ? Math.max(0, Math.floor((Math.min(...allScores) - 0.05) * 20) / 20)
+        : 0;
+
+    // Sort disciplines by mean across these models
+    // Descending array → Plotly puts array[0] at bottom, array[last] at top
+    // So descending = highest at bottom, lowest at top ✓
+    const disciplineScores = cats.map(c => {
+        const vals = models
+            .map(m => getCatAvg(m, c))
+            .filter(v => v !== null);
         return {
-            y: cats,
+            cat: c,
+            mean: vals.length
+                ? vals.reduce((a, b) => a + b, 0) / vals.length
+                : 0
+        };
+    });
+    disciplineScores.sort((a, b) => b.mean - a.mean); // descending
+    const sortedCats = disciplineScores.map(d => d.cat);
+
+    // Assign consistent colors by model name — same model always same color
+    const COLOR_MAP = [
+        'FoxBrain_v1.2_70B_0630',
+        'FoxBrain_v1.5_20251203_remove_repeat_lora',
+        'NVIDIA-Nemotron-3-Super-120B-A12B-BF16',
+        'NVIDIA-Nemotron-3-Nano-30B-A3B-BF16',
+        'gemma-4-31B-it',
+        'gpt-oss-20b',
+        'Gemma-3-TAIDE-12b-Chat-ZH-TW-Prompt',
+    ];
+
+    // Reverse models so Plotly stacks first model on top
+    const barTraces = [...models].reverse().map(m => {
+        const ci = COLOR_MAP.indexOf(m.name);
+        const color = CHART_COLORS[ci >= 0 ? ci % CHART_COLORS.length : 0];
+        const xVals = sortedCats.map(c => getCatAvg(m, c));
+        return {
+            y: sortedCats,
             x: xVals,
             type: 'bar',
             orientation: 'h',
             name: m.name,
-            legendrank: origIdx + 1,
-            marker: { color: CHART_COLORS[origIdx % CHART_COLORS.length] },
-            text: xVals.map(v => v !== null ? (v * 100).toFixed(1) + '%' : ''),
+            legendrank: models.indexOf(m) + 1,
+            marker: { color },
+            text: xVals.map(v =>
+                v !== null ? (v * 100).toFixed(1) + '%' : ''
+            ),
             textposition: 'outside',
-            textfont: { size: 13, color: CHART_COLORS[origIdx % CHART_COLORS.length], family: 'Arial' },
+            textfont: { size: 13, color, family: 'Arial' },
             cliponaxis: false,
-            hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>' + m.name + '</extra>'
+            hovertemplate:
+                '<b>%{y}</b><br>%{x:.1%}<extra>' + m.name + '</extra>'
         };
     });
 
     Plotly.react('bar-chart', barTraces, {
         title: { text: 'Mean Accuracy per Discipline', font: { size: 15 } },
         barmode: 'group',
-        xaxis: { range: [minScore, 1], tickformat: ',.0%', title: 'Mean Accuracy', automargin: true },
+        xaxis: {
+            range: [minScore, 1],
+            tickformat: ',.0%',
+            title: 'Mean Accuracy',
+            automargin: true
+        },
         yaxis: {
             automargin: true,
             categoryorder: 'array',
-            categoryarray: (() => {
-                const disciplineScores = cats.map(c => {
-                    const vals = chartModels
-                        .map(m => getCatAvg(m, c))
-                        .filter(v => v !== null);
-                    return {
-                        cat: c,
-                        mean: vals.length
-                            ? vals.reduce((a,b) => a+b, 0) / vals.length
-                            : 0
-                    };
-                });
-                // Sort DESCENDING so Plotly renders lowest at TOP
-                // (Plotly horizontal bars: array[0]=bottom, array[last]=top)
-                disciplineScores.sort((a,b) => b.mean - a.mean);
-                return disciplineScores.map(d => d.cat);
-            })()
+            categoryarray: sortedCats
         },
-        legend: { orientation: 'h', y: -0.22, x: 0.5, xanchor: 'center', traceorder: 'normal' },
+        legend: {
+            orientation: 'h', y: -0.22,
+            x: 0.5, xanchor: 'center',
+            traceorder: 'normal'
+        },
         margin: { t: 60, b: 60, l: 140, r: 20 },
         responsive: true
     }, { responsive: true });
 
-    // Dynamic caption: warn about non-zero axis start
+    // Caption
     const barCaption = document.getElementById('bar-caption');
     if (barCaption) {
         const minPct = (minScore * 100).toFixed(0);
         barCaption.innerHTML = minScore > 0
-            ? `Horizontal bars show mean accuracy per discipline for the top 5 models. <strong>Note: X-axis starts at ${minPct}%, not 0%</strong> — differences between bars reflect real performance gaps.`
-            : `Horizontal bars show mean accuracy per discipline for the top 5 models.`;
+            ? `Mean accuracy per discipline, sorted lowest → highest (lowest at top). `
+            + `<strong>Note: X-axis starts at ${minPct}%, not 0%.</strong>`
+            : `Mean accuracy per discipline, sorted lowest → highest (lowest at top).`;
     }
 }
 
