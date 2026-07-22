@@ -773,12 +773,17 @@ function renderComparisonTable() {
     if (!tbody.innerHTML) {
         tbody.innerHTML = `<tr><td colspan="${selectedModels.length + 1}" class="text-center text-muted py-5">No shared tasks found for the selected models and category.</td></tr>`;
     }
+    // Re-render bar chart with currently selected models sorted lowest→highest
+    if (typeof globalModels !== 'undefined' && globalModels.length) {
+        const selNames = Array.from(
+            document.querySelectorAll('.model-chk:checked')
+        ).map(c => c.value);
+        const selModels = globalModels.filter(
+            m => selNames.includes(m.name)
+        );
+        if (selModels.length) drawBarChart(selModels);
+    }
 }
-
-// ── Charts ─────────────────────────────────────────────────────────────────
-const CHART_COLORS      = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#ea580c'];
-const CHART_FILL_COLORS = ['rgba(37,99,235,0.12)','rgba(22,163,74,0.12)','rgba(217,119,6,0.12)','rgba(220,38,38,0.12)','rgba(124,58,237,0.12)','rgba(234,88,12,0.12)'];
-
 function getCatAvg(m, cat) {
     if (!m.disciplines[cat]) return null;
     const vals = Object.values(m.disciplines[cat]).map(arr => arr[0].score);
