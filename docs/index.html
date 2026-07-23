@@ -706,6 +706,7 @@ Papa.parse(CSV_PATH, {
         rawDataRows = res.data.filter(r => r.task_name && r.task_name !== 'mean_of_TMMLU+');
         globalModels = processData(res.data);
         renderLeaderboard(globalModels);
+        globalData = globalModels;
         drawCharts(globalModels);
         initSearchMeta();
         applyHashTab();
