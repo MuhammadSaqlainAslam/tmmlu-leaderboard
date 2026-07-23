@@ -533,7 +533,8 @@ const METADATA_METRICS = ['total_samples', 'correct_samples', 'total', 'evaluate
 let globalModels = [];
 let rawDataRows = [];
 let globalData = null;
-let chartModels = [];
+let modelVisibility = {};  // tracks which models user has shown/hidden
+let chartModels = [];      // models currently drawn in charts (global for sort toggle)
 let currentSort = 'overall';
 let currentSortDir = 'desc';
 
@@ -817,6 +818,14 @@ function drawCharts(data) {
         .map(name => dataMap[name])
         .slice(0, 6);
 
+    // Initialize visibility tracker — all visible by default
+    // Only reset if not already set (preserves user clicks)
+    if (Object.keys(modelVisibility).length === 0) {
+        chartModels.forEach(function(m) {
+            modelVisibility[m.name] = true;
+        });
+    }
+
     // ── Radar ──────────────────────────────────────────────────────────────
     const radarTraces = chartModels.map((m, i) => ({
         type: 'scatterpolar',
@@ -875,6 +884,15 @@ function drawCharts(data) {
         margin: { t: 60, b: 60, l: 140, r: 20 },
         responsive: true
     }, { responsive: true });
+
+    // Track legend clicks to keep modelVisibility in sync
+    document.getElementById('bar-chart')
+      .on('plotly_legendclick', function(data) {
+        var traceName = data.data[data.curveNumber].name;
+        if (modelVisibility[traceName] !== undefined) {
+            modelVisibility[traceName] = !modelVisibility[traceName];
+        }
+    });
 
     // Dynamic caption: warn about non-zero axis start
     const barCaption = document.getElementById('bar-caption');
@@ -946,86 +964,207 @@ function toggleBarSort() {
     barSortActive = !barSortActive;
     var btn = document.getElementById('sort-bars-btn');
     if (btn) {
-        btn.style.background  = barSortActive ? 'var(--primary)' : 'transparent';
-        btn.style.color       = barSortActive ? '#fff' : 'var(--text-muted)';
-        btn.style.borderColor = barSortActive ? 'var(--primary)' : 'var(--border-color)';
-        btn.textContent       = barSortActive ? 'Sorted by score ✓' : 'Sort bars by score';
+        btn.style.background  = barSortActive
+            ? 'var(--primary)' : 'transparent';
+        btn.style.color       = barSortActive
+            ? '#fff' : 'var(--text-muted)';
+        btn.style.borderColor = barSortActive
+            ? 'var(--primary)' : 'var(--border-color)';
+        btn.textContent = barSortActive
+            ? 'Sorted by score ✓'
+            : 'Sort bars by score';
     }
-    redrawBarChart();
+    if (barSortActive) {
+        drawSortedBarChart();
+    } else {
+        drawOriginalBarChart();
+    }
 }
 
-function redrawBarChart() {
-    var barDiv = document.getElementById('bar-chart');
-    if (!barDiv || !barDiv.data || !chartModels || !chartModels.length) return;
+function drawOriginalBarChart() {
+    // Redraw the original unsorted bar chart
+    // using existing drawCharts logic but preserving
+    // current modelVisibility
+    if (!globalData || !chartModels || !chartModels.length) return;
     var cats = Object.keys(DISCIPLINE_MAP);
-    var visMap = {};
-    barDiv.data.forEach(function(t) {
-        visMap[t.name] = (t.visible !== false && t.visible !== 'legendonly');
-    });
-    if (!barSortActive) {
-        if (globalData) {
-            drawCharts(globalData);
-            setTimeout(function() {
-                var d = document.getElementById('bar-chart');
-                if (!d || !d.data) return;
-                Plotly.restyle('bar-chart', {
-                    visible: d.data.map(function(t) { return visMap[t.name] ? true : 'legendonly'; })
-                });
-            }, 150);
-        }
-        return;
-    }
-    var visMods = chartModels.filter(function(m) { return visMap[m.name] !== false; });
-    if (!visMods.length) return;
-    var nV = visMods.length;
-    var discMeans = cats.map(function(c) {
-        var vals = visMods.map(function(m) { return getCatAvg(m,c); }).filter(function(v) { return v !== null; });
-        return { cat:c, mean: vals.length ? vals.reduce(function(a,b){return a+b;},0)/vals.length : 0 };
-    });
-    discMeans.sort(function(a,b) { return b.mean - a.mean; });
-    var yOrder=[], keyMod={}, keySc={};
-    discMeans.forEach(function(d) {
-        var sc = visMods.map(function(m) { return {m:m, s:getCatAvg(m,d.cat)}; });
-        sc.sort(function(a,b) { return (a.s===null)?-1:(b.s===null)?1:a.s-b.s; });
-        sc.forEach(function(item,rank) {
-            var k=d.cat+'||'+rank; yOrder.push(k); keyMod[k]=item.m.name; keySc[k]=item.s;
-        });
-    });
-    var allSc=visMods.flatMap(function(m){return cats.map(function(c){return getCatAvg(m,c);});}).filter(function(v){return v!==null;});
-    var minSc=allSc.length?Math.max(0,Math.floor((Math.min.apply(null,allSc)-0.05)*20)/20):0;
-    var barW=nV<=2?0.55:nV<=3?0.45:nV<=4?0.35:0.28;
-    var traces=chartModels.map(function(m,oi) {
-        var color=CHART_COLORS[oi%CHART_COLORS.length];
-        var vis=visMap[m.name]!==false;
-        var xVals=yOrder.map(function(k){return keyMod[k]===m.name?keySc[k]:null;});
-        var txts=xVals.map(function(v){return (v!==null&&v>=0)?(v*100).toFixed(1)+'%':'';});
+    var allSc = chartModels
+        .filter(function(m) { return modelVisibility[m.name]; })
+        .flatMap(function(m) {
+            return cats.map(function(c) { return getCatAvg(m, c); });
+        })
+        .filter(function(v) { return v !== null; });
+    var minScore = allSc.length
+        ? Math.max(0, Math.floor(
+            (Math.min.apply(null, allSc) - 0.05) * 20) / 20)
+        : 0;
+
+    var traces = [...chartModels].reverse().map(function(m) {
+        var oi = chartModels.indexOf(m);
+        var color = CHART_COLORS[oi % CHART_COLORS.length];
+        var xVals = cats.map(function(c) { return getCatAvg(m, c); });
         return {
-            y:yOrder,x:xVals,type:'bar',orientation:'h',
-            name:m.name,legendrank:oi+1,
-            visible:vis?true:'legendonly',width:vis?barW:0,
-            marker:{color:color},text:txts,textposition:'outside',
-            textfont:{size:12,color:color,family:'Arial'},
-            cliponaxis:false,
-            hovertemplate:'<b>'+m.name+'</b><br>%{x:.1%}<extra></extra>'
+            y: cats,
+            x: xVals,
+            type: 'bar',
+            orientation: 'h',
+            name: m.name,
+            legendrank: oi + 1,
+            visible: modelVisibility[m.name] ? true : 'legendonly',
+            marker: { color: color },
+            text: xVals.map(function(v) {
+                return v !== null ? (v * 100).toFixed(1) + '%' : '';
+            }),
+            textposition: 'outside',
+            textfont: { size: 13, color: color, family: 'Arial' },
+            cliponaxis: false,
+            hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>'
+                + m.name + '</extra>'
         };
     });
-    var mid=Math.floor(nV/2);
-    Plotly.react('bar-chart',traces,{
-        title:{text:'Mean Accuracy per Discipline',font:{size:15}},
-        barmode:'overlay',
-        xaxis:{range:[minSc,1],tickformat:',.0%',title:'Mean Accuracy',automargin:true},
-        yaxis:{
-            automargin:true,categoryorder:'array',
-            categoryarray:[...yOrder].reverse(),
-            tickmode:'array',
-            tickvals:discMeans.map(function(d){return d.cat+'||'+mid;}),
-            ticktext:discMeans.map(function(d){return d.cat;})
+
+    Plotly.react('bar-chart', traces, {
+        title: { text: 'Mean Accuracy per Discipline',
+                 font: { size: 15 } },
+        barmode: 'group',
+        xaxis: { range: [minScore, 1], tickformat: ',.0%',
+                 title: 'Mean Accuracy', automargin: true },
+        yaxis: { automargin: true, categoryorder: 'array',
+                 categoryarray: [...cats].reverse() },
+        legend: { orientation: 'h', y: -0.22, x: 0.5,
+                  xanchor: 'center', traceorder: 'normal' },
+        margin: { t: 60, b: 60, l: 140, r: 20 },
+        responsive: true
+    }, { responsive: true });
+
+    // Re-attach legend click tracker
+    document.getElementById('bar-chart')
+        .on('plotly_legendclick', function(data) {
+        var name = data.data[data.curveNumber].name;
+        if (modelVisibility[name] !== undefined) {
+            modelVisibility[name] = !modelVisibility[name];
+        }
+    });
+}
+
+function drawSortedBarChart() {
+    if (!chartModels || !chartModels.length) return;
+    var cats = Object.keys(DISCIPLINE_MAP);
+
+    // Only use visible models
+    var visMods = chartModels.filter(function(m) {
+        return modelVisibility[m.name] !== false;
+    });
+    if (!visMods.length) return;
+    var nV = visMods.length;
+
+    // Sort disciplines descending by mean (lowest at top)
+    var discMeans = cats.map(function(c) {
+        var vals = visMods
+            .map(function(m) { return getCatAvg(m, c); })
+            .filter(function(v) { return v !== null; });
+        return {
+            cat: c,
+            mean: vals.length
+                ? vals.reduce(function(a,b){return a+b;},0) / vals.length
+                : 0
+        };
+    });
+    discMeans.sort(function(a,b) { return b.mean - a.mean; });
+
+    // Per discipline: sort models by score ascending (lowest = top)
+    var yOrder = [], keyMod = {}, keySc = {};
+    discMeans.forEach(function(d) {
+        var sc = visMods.map(function(m) {
+            return { m: m, s: getCatAvg(m, d.cat) };
+        });
+        sc.sort(function(a,b) {
+            if (a.s === null) return -1;
+            if (b.s === null) return 1;
+            return a.s - b.s;
+        });
+        sc.forEach(function(item, rank) {
+            var k = d.cat + '||' + rank;
+            yOrder.push(k);
+            keyMod[k] = item.m.name;
+            keySc[k]  = item.s;
+        });
+    });
+
+    // x range
+    var allSc = visMods.flatMap(function(m) {
+        return cats.map(function(c) { return getCatAvg(m, c); });
+    }).filter(function(v) { return v !== null; });
+    var minSc = allSc.length
+        ? Math.max(0, Math.floor(
+            (Math.min.apply(null, allSc) - 0.05) * 20) / 20)
+        : 0;
+
+    // Bar width based on visible model count
+    var barW = nV <= 2 ? 0.55
+             : nV <= 3 ? 0.45
+             : nV <= 4 ? 0.35 : 0.28;
+
+    // One trace per chartModel — preserves legend
+    var traces = chartModels.map(function(m, oi) {
+        var color = CHART_COLORS[oi % CHART_COLORS.length];
+        var vis   = modelVisibility[m.name] !== false;
+        var xVals = yOrder.map(function(k) {
+            return keyMod[k] === m.name ? keySc[k] : null;
+        });
+        var txts = xVals.map(function(v) {
+            return (v !== null && v >= 0)
+                ? (v * 100).toFixed(1) + '%' : '';
+        });
+        return {
+            y: yOrder, x: xVals,
+            type: 'bar', orientation: 'h',
+            name: m.name, legendrank: oi + 1,
+            visible: vis ? true : 'legendonly',
+            width: vis ? barW : 0,
+            marker: { color: color },
+            text: txts, textposition: 'outside',
+            textfont: { size: 12, color: color, family: 'Arial' },
+            cliponaxis: false,
+            hovertemplate: '<b>' + m.name
+                + '</b><br>%{x:.1%}<extra></extra>'
+        };
+    });
+
+    var mid = Math.floor(nV / 2);
+    Plotly.react('bar-chart', traces, {
+        title: { text: 'Mean Accuracy per Discipline',
+                 font: { size: 15 } },
+        barmode: 'overlay',
+        xaxis: { range: [minSc, 1], tickformat: ',.0%',
+                 title: 'Mean Accuracy', automargin: true },
+        yaxis: {
+            automargin: true,
+            categoryorder: 'array',
+            categoryarray: [...yOrder].reverse(),
+            tickmode: 'array',
+            tickvals: discMeans.map(function(d) {
+                return d.cat + '||' + mid;
+            }),
+            ticktext: discMeans.map(function(d) { return d.cat; })
         },
-        legend:{orientation:'h',y:-0.22,x:0.5,xanchor:'center',traceorder:'normal'},
-        margin:{t:60,b:60,l:140,r:20},
-        height:Math.max(280,nV*discMeans.length*30+140),
-        responsive:true
-    },{responsive:true});
+        legend: { orientation: 'h', y: -0.22, x: 0.5,
+                  xanchor: 'center', traceorder: 'normal' },
+        margin: { t: 60, b: 60, l: 140, r: 20 },
+        height: Math.max(280, nV * discMeans.length * 30 + 140),
+        responsive: true
+    }, { responsive: true });
+
+    // Re-attach legend click tracker
+    document.getElementById('bar-chart')
+        .on('plotly_legendclick', function(data) {
+        var name = data.data[data.curveNumber].name;
+        if (modelVisibility[name] !== undefined) {
+            modelVisibility[name] = !modelVisibility[name];
+        }
+        // Re-render to update sorted chart
+        setTimeout(drawSortedBarChart, 50);
+        return false; // prevent default Plotly toggle
+    });
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
