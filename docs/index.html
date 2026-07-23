@@ -1064,9 +1064,15 @@ function redrawBarChart() {
         const minScore = allScores.length
             ? Math.max(0, Math.floor((Math.min.apply(null,allScores)-0.05)*20)/20) : 0;
 
+        // Set bar width based on number of visible models
+        var barW = nV <= 3 ? 0.6 : nV <= 4 ? 0.5 : 0.4;
+        newTraces.forEach(function(t) {
+            if (t.visible !== 'legendonly') t.width = barW;
+        });
+
         Plotly.react('bar-chart', newTraces, {
             title: { text: 'Mean Accuracy per Discipline', font: { size: 15 } },
-            barmode: 'group',
+            barmode: 'overlay',
             xaxis: { range:[minScore,1], tickformat:',.0%',
                      title:'Mean Accuracy', automargin:true },
             yaxis: {
@@ -1080,6 +1086,8 @@ function redrawBarChart() {
             legend: { orientation:'h', y:-0.22, x:0.5,
                       xanchor:'center', traceorder:'normal' },
             margin: { t:60, b:60, l:140, r:20 },
+            bargap: 0.3,
+            height: Math.max(300, nV * discMeans.length * 28 + 160),
             responsive: true
         }, { responsive: true });
 
