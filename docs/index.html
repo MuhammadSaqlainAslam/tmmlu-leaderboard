@@ -453,8 +453,12 @@
                     <p class="chart-caption">Each axis is a discipline. A model's polygon extends outward as performance improves. Scores are mean accuracy across all subjects in that discipline. Showing top 5 models by current sort.</p>
                 </div>
                 <div class="col-lg-6">
-                    <div class="chart-container shadow-sm">
-                    <div style="text-align:right;padding:6px 10px 0">
+                    <div class="chart-container shadow-sm"
+                         id="bar-chart-container"
+                         style="overflow-y:auto; max-height:520px">
+                    <div style="text-align:right;padding:6px 10px 0;
+                         position:sticky;top:0;background:var(--bg);
+                         z-index:10">
                         <button id="sort-bars-btn" onclick="toggleBarSort()"
                             style="font-size:12px;padding:4px 12px;
                             border-radius:99px;border:1.5px solid var(--border-color);
@@ -1100,9 +1104,10 @@ function drawSortedBarChart() {
         : 0;
 
     // Bar width based on visible model count
-    var barW = nV <= 2 ? 0.55
-             : nV <= 3 ? 0.45
-             : nV <= 4 ? 0.35 : 0.28;
+    var barW = nV <= 2 ? 0.6
+             : nV <= 3 ? 0.5
+             : nV <= 4 ? 0.4
+             : nV <= 5 ? 0.3 : 0.22;
 
     // One trace per chartModel — preserves legend
     var traces = chartModels.map(function(m, oi) {
@@ -1135,6 +1140,8 @@ function drawSortedBarChart() {
         title: { text: 'Mean Accuracy per Discipline',
                  font: { size: 15 } },
         barmode: 'overlay',
+        bargap: 0.15,
+        bargroupgap: 0.05,
         xaxis: { range: [minSc, 1], tickformat: ',.0%',
                  title: 'Mean Accuracy', automargin: true },
         yaxis: {
@@ -1150,7 +1157,7 @@ function drawSortedBarChart() {
         legend: { orientation: 'h', y: -0.22, x: 0.5,
                   xanchor: 'center', traceorder: 'normal' },
         margin: { t: 60, b: 60, l: 140, r: 20 },
-        height: Math.max(280, nV * discMeans.length * 30 + 140),
+        height: Math.max(280, nV * discMeans.length * 22 + 120),
         responsive: true
     }, { responsive: true });
 
