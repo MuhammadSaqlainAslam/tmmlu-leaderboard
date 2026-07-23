@@ -7,7 +7,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* ── Theme tokens ───────────────────────────────────────── */
         :root {
@@ -454,12 +453,8 @@
                     <p class="chart-caption">Each axis is a discipline. A model's polygon extends outward as performance improves. Scores are mean accuracy across all subjects in that discipline. Showing top 5 models by current sort.</p>
                 </div>
                 <div class="col-lg-6">
-                    <div class="chart-container shadow-sm"
-                         id="bar-chart-container"
-                         style="overflow-y:auto; max-height:520px">
-                    <div style="text-align:right;padding:6px 10px 0;
-                         position:sticky;top:0;background:var(--bg);
-                         z-index:10">
+                    <div class="chart-container shadow-sm">
+                    <div style="text-align:right;padding:6px 10px 0">
                         <button id="sort-bars-btn" onclick="toggleBarSort()"
                             style="font-size:12px;padding:4px 12px;
                             border-radius:99px;border:1.5px solid var(--border-color);
@@ -469,9 +464,7 @@
                             Sort bars by score 🔃
                         </button>
                     </div>
-                    <div id="bar-chart" style="position:relative">
-                        <canvas id="bar-chart-canvas"></canvas>
-                    </div>
+                    <div id="bar-chart"></div>
                 </div>
                     <p class="chart-caption" id="bar-caption">Horizontal bars show mean accuracy per discipline for the top 5 models.</p>
                 </div>
@@ -540,7 +533,6 @@ const METADATA_METRICS = ['total_samples', 'correct_samples', 'total', 'evaluate
 let globalModels = [];
 let rawDataRows = [];
 let globalData = null;
-let barChartInstance = null;
 let modelVisibility = {};  // tracks which models user has shown/hidden
 let chartModels = [];      // models currently drawn in charts (global for sort toggle)
 let currentSort = 'overall';
@@ -856,14 +848,66 @@ function drawCharts(data) {
         responsive: true
     }, { responsive: true });
 
-    // ── Horizontal Bar (Chart.js) ──────────────────
-    renderBarChart(chartModels, false);
+    // ── Horizontal Bar ─────────────────────────────────────────────────────
+    // Auto-tighten x-axis: floor min score to nearest 0.05 then subtract 0.05
+    const allScores = chartModels.flatMap(m => cats.map(c => getCatAvg(m, c))).filter(v => v !== null);
+    const minScore  = allScores.length ? Math.max(0, Math.floor((Math.min(...allScores) - 0.05) * 20) / 20) : 0;
+
+    // Bar traces: reversed so Plotly renders row 1 at top, row 2 below, etc.
+    // Plotly draws grouped horizontal bars bottom-to-top, so we reverse trace order.
+    // legendrank preserves correct legend order (row 1 first in legend).
+    const barTraces = [...chartModels].reverse().map((m) => {
+        const origIdx = chartModels.indexOf(m);
+        const xVals = cats.map(c => getCatAvg(m, c));
+        return {
+            y: cats,
+            x: xVals,
+            type: 'bar',
+            orientation: 'h',
+            name: m.name,
+            legendrank: origIdx + 1,
+            marker: { color: CHART_COLORS[origIdx % CHART_COLORS.length] },
+            text: xVals.map(v => v !== null ? (v * 100).toFixed(1) + '%' : ''),
+            textposition: 'outside',
+            textfont: { size: 13, color: CHART_COLORS[origIdx % CHART_COLORS.length], family: 'Arial' },
+            cliponaxis: false,
+            hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>' + m.name + '</extra>'
+        };
+    });
+
+    Plotly.react('bar-chart', barTraces, {
+        title: { text: 'Mean Accuracy per Discipline', font: { size: 15 } },
+        barmode: 'group',
+        xaxis: { range: [minScore, 1], tickformat: ',.0%', title: 'Mean Accuracy', automargin: true },
+        yaxis: { automargin: true, categoryorder: 'array', categoryarray: [...cats].reverse() },
+        legend: { orientation: 'h', y: -0.22, x: 0.5, xanchor: 'center', traceorder: 'normal' },
+        margin: { t: 60, b: 60, l: 140, r: 20 },
+        responsive: true
+    }, { responsive: true });
+
+    // Track legend clicks to keep modelVisibility in sync
+    document.getElementById('bar-chart')
+      .on('plotly_legendclick', function(data) {
+        var traceName = data.data[data.curveNumber].name;
+        if (modelVisibility[traceName] !== undefined) {
+            modelVisibility[traceName] = !modelVisibility[traceName];
+        }
+    });
+
+    // Dynamic caption: warn about non-zero axis start
+    const barCaption = document.getElementById('bar-caption');
+    if (barCaption) {
+        const minPct = (minScore * 100).toFixed(0);
+        barCaption.innerHTML = minScore > 0
+            ? `Horizontal bars show mean accuracy per discipline for the top 5 models. <strong>Note: X-axis starts at ${minPct}%, not 0%</strong> — differences between bars reflect real performance gaps.`
+            : `Horizontal bars show mean accuracy per discipline for the top 5 models.`;
+    }
 }
 
 // ── Responsive chart resize ────────────────────────────────────────────────
 window.addEventListener('resize', () => {
     Plotly.relayout('radar-chart', { autosize: true });
-    // bar chart is Chart.js now — it resizes itself (responsive: true)
+    Plotly.relayout('bar-chart',  { autosize: true });
 });
 
 // ── Search ─────────────────────────────────────────────────────────────────
@@ -913,7 +957,7 @@ function initSearchMeta() {
         `Showing all <strong>${globalModels.length}</strong> models &nbsp;<span class="search-hint">Press <kbd>/</kbd> to search</span>`;
 }
 
-// -- Bar sort toggle (Chart.js version)
+// -- Bar sort toggle
 let barSortActive = false;
 
 function toggleBarSort() {
@@ -930,251 +974,197 @@ function toggleBarSort() {
             ? 'Sorted by score ✓'
             : 'Sort bars by score';
     }
-    renderBarChart(chartModels, barSortActive);
+    if (barSortActive) {
+        drawSortedBarChart();
+    } else {
+        drawOriginalBarChart();
+    }
 }
 
-function renderBarChart(models, sorted) {
-    if (!models || !models.length) return;
+function drawOriginalBarChart() {
+    // Redraw the original unsorted bar chart
+    // using existing drawCharts logic but preserving
+    // current modelVisibility
+    if (!globalData || !chartModels || !chartModels.length) return;
+    var cats = Object.keys(DISCIPLINE_MAP);
+    var allSc = chartModels
+        .filter(function(m) { return modelVisibility[m.name]; })
+        .flatMap(function(m) {
+            return cats.map(function(c) { return getCatAvg(m, c); });
+        })
+        .filter(function(v) { return v !== null; });
+    var minScore = allSc.length
+        ? Math.max(0, Math.floor(
+            (Math.min.apply(null, allSc) - 0.05) * 20) / 20)
+        : 0;
+
+    var traces = [...chartModels].reverse().map(function(m) {
+        var oi = chartModels.indexOf(m);
+        var color = CHART_COLORS[oi % CHART_COLORS.length];
+        var xVals = cats.map(function(c) { return getCatAvg(m, c); });
+        return {
+            y: cats,
+            x: xVals,
+            type: 'bar',
+            orientation: 'h',
+            name: m.name,
+            legendrank: oi + 1,
+            visible: modelVisibility[m.name] ? true : 'legendonly',
+            marker: { color: color },
+            text: xVals.map(function(v) {
+                return v !== null ? (v * 100).toFixed(1) + '%' : '';
+            }),
+            textposition: 'outside',
+            textfont: { size: 13, color: color, family: 'Arial' },
+            cliponaxis: false,
+            hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>'
+                + m.name + '</extra>'
+        };
+    });
+
+    Plotly.react('bar-chart', traces, {
+        title: { text: 'Mean Accuracy per Discipline',
+                 font: { size: 15 } },
+        barmode: 'group',
+        xaxis: { range: [minScore, 1], tickformat: ',.0%',
+                 title: 'Mean Accuracy', automargin: true },
+        yaxis: { automargin: true, categoryorder: 'array',
+                 categoryarray: [...cats].reverse() },
+        legend: { orientation: 'h', y: -0.22, x: 0.5,
+                  xanchor: 'center', traceorder: 'normal' },
+        margin: { t: 60, b: 60, l: 140, r: 20 },
+        responsive: true
+    }, { responsive: true });
+
+    // Re-attach legend click tracker
+    document.getElementById('bar-chart')
+        .on('plotly_legendclick', function(data) {
+        var name = data.data[data.curveNumber].name;
+        if (modelVisibility[name] !== undefined) {
+            modelVisibility[name] = !modelVisibility[name];
+        }
+    });
+}
+
+function drawSortedBarChart() {
+    if (!chartModels || !chartModels.length) return;
     var cats = Object.keys(DISCIPLINE_MAP);
 
-    // Destroy previous Chart.js instance
-    if (barChartInstance) {
-        barChartInstance.destroy();
-        barChartInstance = null;
-    }
+    // Only use visible models
+    var visMods = chartModels.filter(function(m) {
+        return modelVisibility[m.name] !== false;
+    });
+    if (!visMods.length) return;
+    var nV = visMods.length;
 
-    // Sort disciplines by mean ascending
-    // (lowest discipline at top = first in horizontal bar)
+    // Sort disciplines descending by mean (lowest at top)
     var discMeans = cats.map(function(c) {
-        var vals = models
+        var vals = visMods
             .map(function(m) { return getCatAvg(m, c); })
             .filter(function(v) { return v !== null; });
         return {
             cat: c,
             mean: vals.length
-                ? vals.reduce(function(a,b) {
-                    return a+b;
-                  }, 0) / vals.length
+                ? vals.reduce(function(a,b){return a+b;},0) / vals.length
                 : 0
         };
     });
-    discMeans.sort(function(a, b) { return a.mean - b.mean; });
-    var sortedCats = discMeans.map(function(d) { return d.cat; });
+    discMeans.sort(function(a,b) { return b.mean - a.mean; });
 
-    // Build datasets — one per model
-    // If sorted=true: per discipline, reorder models by score ascending
-    var datasets = models.map(function(m, idx) {
-        var color = CHART_COLORS[
-            chartModels.indexOf(m) % CHART_COLORS.length
-        ];
-        var data = sortedCats.map(function(cat) {
-            var v = getCatAvg(m, cat);
-            return v !== null ? parseFloat((v * 100).toFixed(1)) : null;
+    // Per discipline: sort models by score ascending (lowest = top)
+    var yOrder = [], keyMod = {}, keySc = {};
+    discMeans.forEach(function(d) {
+        var sc = visMods.map(function(m) {
+            return { m: m, s: getCatAvg(m, d.cat) };
+        });
+        sc.sort(function(a,b) {
+            if (a.s === null) return -1;
+            if (b.s === null) return 1;
+            return a.s - b.s;
+        });
+        sc.forEach(function(item, rank) {
+            var k = d.cat + '||' + rank;
+            yOrder.push(k);
+            keyMod[k] = item.m.name;
+            keySc[k]  = item.s;
+        });
+    });
+
+    // x range
+    var allSc = visMods.flatMap(function(m) {
+        return cats.map(function(c) { return getCatAvg(m, c); });
+    }).filter(function(v) { return v !== null; });
+    var minSc = allSc.length
+        ? Math.max(0, Math.floor(
+            (Math.min.apply(null, allSc) - 0.05) * 20) / 20)
+        : 0;
+
+    // Bar width based on visible model count
+    var barW = nV <= 2 ? 0.55
+             : nV <= 3 ? 0.45
+             : nV <= 4 ? 0.35 : 0.28;
+
+    // One trace per chartModel — preserves legend
+    var traces = chartModels.map(function(m, oi) {
+        var color = CHART_COLORS[oi % CHART_COLORS.length];
+        var vis   = modelVisibility[m.name] !== false;
+        var xVals = yOrder.map(function(k) {
+            return keyMod[k] === m.name ? keySc[k] : null;
+        });
+        var txts = xVals.map(function(v) {
+            return (v !== null && v >= 0)
+                ? (v * 100).toFixed(1) + '%' : '';
         });
         return {
-            label: m.name,
-            data: data,
-            backgroundColor: color,
-            borderColor: color,
-            borderWidth: 0,
-            borderRadius: 2,
-            barPercentage: 0.85,
-            categoryPercentage: 0.8
+            y: yOrder, x: xVals,
+            type: 'bar', orientation: 'h',
+            name: m.name, legendrank: oi + 1,
+            visible: vis ? true : 'legendonly',
+            width: vis ? barW : 0,
+            marker: { color: color },
+            text: txts, textposition: 'outside',
+            textfont: { size: 12, color: color, family: 'Arial' },
+            cliponaxis: false,
+            hovertemplate: '<b>' + m.name
+                + '</b><br>%{x:.1%}<extra></extra>'
         };
     });
 
-    if (sorted) {
-        // Per discipline: reorder datasets by score ascending
-        // Chart.js doesn't support per-group ordering natively
-        // so we build a custom sorted dataset per discipline
-        var sortedDatasets = [];
-        sortedCats.forEach(function(cat, catIdx) {
-            // Get scores for this discipline
-            var catScores = models.map(function(m, mIdx) {
-                return {
-                    mIdx: mIdx,
-                    score: datasets[mIdx].data[catIdx]
-                };
-            });
-            // Sort ascending by score
-            catScores.sort(function(a, b) {
-                if (a.score === null) return -1;
-                if (b.score === null) return 1;
-                return a.score - b.score;
-            });
-            catScores.forEach(function(item, rank) {
-                if (!sortedDatasets[rank]) {
-                    sortedDatasets[rank] = {
-                        label: '__sorted__' + rank,
-                        data: new Array(sortedCats.length).fill(null),
-                        backgroundColor: [],
-                        borderWidth: 0,
-                        borderRadius: 2,
-                        barPercentage: 0.85,
-                        categoryPercentage: 0.8,
-                        _colorMap: []
-                    };
-                }
-                sortedDatasets[rank].data[catIdx] = item.score;
-                sortedDatasets[rank]._colorMap[catIdx] =
-                    datasets[item.mIdx].backgroundColor;
-            });
-        });
-
-        // Apply per-bar colors using backgroundColor arrays
-        sortedDatasets.forEach(function(ds) {
-            ds.backgroundColor = sortedCats.map(function(cat, i) {
-                return ds._colorMap[i] || 'rgba(0,0,0,0.1)';
-            });
-            ds.borderColor = ds.backgroundColor;
-            ds.label = '';
-        });
-
-        datasets = sortedDatasets;
-    }
-
-    // x-axis range
-    var allVals = models.flatMap(function(m) {
-        return cats.map(function(c) {
-            var v = getCatAvg(m, c);
-            return v !== null ? v * 100 : null;
-        });
-    }).filter(function(v) { return v !== null; });
-    var minVal = allVals.length
-        ? Math.max(0, Math.floor(Math.min.apply(null, allVals) - 5))
-        : 0;
-
-    // Dynamic height
-    var nV = models.length;
-    var chartH = Math.max(250,
-        sortedCats.length * nV * (sorted ? 22 : 28) + 80);
-    var canvas = document.getElementById('bar-chart-canvas');
-    canvas.style.height = chartH + 'px';
-    canvas.height = chartH;
-
-    // Detect dark mode
-    var isDark = document.documentElement
-        .getAttribute('data-theme') === 'dark';
-    var textColor  = isDark ? '#c9d3e8' : '#1e293b';
-    var gridColor  = isDark
-        ? 'rgba(255,255,255,0.07)'
-        : 'rgba(0,0,0,0.07)';
-
-    barChartInstance = new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels: sortedCats,
-            datasets: datasets
+    var mid = Math.floor(nV / 2);
+    Plotly.react('bar-chart', traces, {
+        title: { text: 'Mean Accuracy per Discipline',
+                 font: { size: 15 } },
+        barmode: 'overlay',
+        xaxis: { range: [minSc, 1], tickformat: ',.0%',
+                 title: 'Mean Accuracy', automargin: true },
+        yaxis: {
+            automargin: true,
+            categoryorder: 'array',
+            categoryarray: [...yOrder].reverse(),
+            tickmode: 'array',
+            tickvals: discMeans.map(function(d) {
+                return d.cat + '||' + mid;
+            }),
+            ticktext: discMeans.map(function(d) { return d.cat; })
         },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 300 },
-            plugins: {
-                legend: {
-                    display: !sorted,
-                    position: 'bottom',
-                    labels: {
-                        color: textColor,
-                        font: { size: 12 },
-                        filter: function(item) {
-                            return !item.text.startsWith('__sorted__');
-                        }
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) {
-                            return ctx.dataset.label
-                                ? ctx.dataset.label + ': '
-                                  + ctx.parsed.x + '%'
-                                : ctx.parsed.x + '%';
-                        }
-                    }
-                },
-                datalabels: false
-            },
-            scales: {
-                x: {
-                    min: minVal,
-                    max: 100,
-                    ticks: {
-                        color: textColor,
-                        callback: function(v) { return v + '%'; }
-                    },
-                    grid: { color: gridColor },
-                    title: {
-                        display: true,
-                        text: 'Mean Accuracy (%)',
-                        color: textColor
-                    }
-                },
-                y: {
-                    ticks: { color: textColor, font: { size: 12 } },
-                    grid: { color: gridColor }
-                }
-            }
-        },
-        plugins: [{
-            id: 'barLabels',
-            afterDatasetsDraw: function(chart) {
-                var ctx2 = chart.ctx;
-                ctx2.save();
-                chart.data.datasets.forEach(function(ds, di) {
-                    var meta = chart.getDatasetMeta(di);
-                    if (meta.hidden) return;
-                    meta.data.forEach(function(bar, idx) {
-                        var val = ds.data[idx];
-                        if (val === null || val === undefined) return;
-                        var color = Array.isArray(ds.backgroundColor)
-                            ? ds.backgroundColor[idx]
-                            : ds.backgroundColor;
-                        ctx2.fillStyle = color || textColor;
-                        ctx2.font = '11px Arial';
-                        ctx2.textAlign = 'left';
-                        ctx2.textBaseline = 'middle';
-                        ctx2.fillText(
-                            val + '%',
-                            bar.x + 4,
-                            bar.y
-                        );
-                    });
-                });
-                ctx2.restore();
-            }
-        }]
-    });
+        legend: { orientation: 'h', y: -0.22, x: 0.5,
+                  xanchor: 'center', traceorder: 'normal' },
+        margin: { t: 60, b: 60, l: 140, r: 20 },
+        height: Math.max(280, nV * discMeans.length * 30 + 140),
+        responsive: true
+    }, { responsive: true });
 
-    // When sorted, add a manual legend below
-    var caption = document.getElementById('bar-caption');
-    if (caption) {
-        if (sorted) {
-            var legendHtml = '<div style="text-align:center;'
-                + 'margin-top:8px;font-size:12px">';
-            models.forEach(function(m, idx) {
-                var color = CHART_COLORS[
-                    chartModels.indexOf(m) % CHART_COLORS.length
-                ];
-                legendHtml += '<span style="display:inline-flex;'
-                    + 'align-items:center;margin:0 8px">'
-                    + '<span style="width:12px;height:12px;'
-                    + 'background:' + color + ';display:inline-block;'
-                    + 'border-radius:2px;margin-right:4px"></span>'
-                    + '<span style="color:' + textColor + '">'
-                    + m.name + '</span></span>';
-            });
-            legendHtml += '</div>';
-            caption.innerHTML = legendHtml;
-        } else {
-            var minPct = minVal.toFixed(0);
-            caption.innerHTML = minVal > 0
-                ? 'Mean accuracy per discipline. '
-                + '<strong>X-axis starts at '
-                + minPct + '%, not 0%.</strong>'
-                : 'Mean accuracy per discipline.';
+    // Re-attach legend click tracker
+    document.getElementById('bar-chart')
+        .on('plotly_legendclick', function(data) {
+        var name = data.data[data.curveNumber].name;
+        if (modelVisibility[name] !== undefined) {
+            modelVisibility[name] = !modelVisibility[name];
         }
-    }
+        // Re-render to update sorted chart
+        setTimeout(drawSortedBarChart, 50);
+        return false; // prevent default Plotly toggle
+    });
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
