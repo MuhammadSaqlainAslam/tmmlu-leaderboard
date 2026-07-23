@@ -455,8 +455,11 @@
                 </div>
                 <div class="col-lg-6">
                     <div class="chart-container shadow-sm"
-                         id="bar-chart-container">
-                    <div style="text-align:right;padding:6px 10px 0">
+                         id="bar-chart-container"
+                         style="overflow-y:auto; max-height:520px">
+                    <div style="text-align:right;padding:6px 10px 0;
+                         position:sticky;top:0;background:var(--bg);
+                         z-index:10">
                         <button id="sort-bars-btn" onclick="toggleBarSort()"
                             style="font-size:12px;padding:4px 12px;
                             border-radius:99px;border:1.5px solid var(--border-color);
@@ -981,66 +984,53 @@ function renderBarChart(models, sorted) {
     });
 
     if (sorted) {
-        // Keep one dataset per model (preserves legend clicks)
-        // For each discipline, sort models by score ascending
-        // by adjusting the data order within each dataset
-
-        // Build sorted order per discipline
-        var discOrders = {};
+        // Per discipline: reorder datasets by score ascending
+        // Chart.js doesn't support per-group ordering natively
+        // so we build a custom sorted dataset per discipline
+        var sortedDatasets = [];
         sortedCats.forEach(function(cat, catIdx) {
-            var scores = models.map(function(m, mIdx) {
-                return { mIdx: mIdx, score: datasets[mIdx].data[catIdx] };
+            // Get scores for this discipline
+            var catScores = models.map(function(m, mIdx) {
+                return {
+                    mIdx: mIdx,
+                    score: datasets[mIdx].data[catIdx]
+                };
             });
-            scores.sort(function(a, b) {
+            // Sort ascending by score
+            catScores.sort(function(a, b) {
                 if (a.score === null) return -1;
                 if (b.score === null) return 1;
                 return a.score - b.score;
             });
-            discOrders[cat] = scores;
+            catScores.forEach(function(item, rank) {
+                if (!sortedDatasets[rank]) {
+                    sortedDatasets[rank] = {
+                        label: '__sorted__' + rank,
+                        data: new Array(sortedCats.length).fill(null),
+                        backgroundColor: [],
+                        borderWidth: 0,
+                        borderRadius: 2,
+                        barPercentage: 0.85,
+                        categoryPercentage: 0.8,
+                        _colorMap: []
+                    };
+                }
+                sortedDatasets[rank].data[catIdx] = item.score;
+                sortedDatasets[rank]._colorMap[catIdx] =
+                    datasets[item.mIdx].backgroundColor;
+            });
         });
 
-        // Rebuild datasets: one per model, data stays aligned
-        // BUT we stack them using Chart.js stack groups
-        // Each discipline gets its own stack so bars appear
-        // side by side sorted within that discipline
-        datasets = models.map(function(m, mIdx) {
-            var color = CHART_COLORS[
-                chartModels.indexOf(m) % CHART_COLORS.length
-            ];
-            return {
-                label: m.name,
-                data: sortedCats.map(function(cat, catIdx) {
-                    return datasets[mIdx].data[catIdx];
-                }),
-                backgroundColor: color,
-                borderColor: color,
-                borderWidth: 0,
-                borderRadius: 2,
-                barPercentage: 0.85,
-                categoryPercentage: 0.8,
-                // Store sort rank per discipline for
-                // custom positioning
-                _sortRanks: sortedCats.map(function(cat) {
-                    var order = discOrders[cat];
-                    for (var i=0; i<order.length; i++) {
-                        if (order[i].mIdx === mIdx) return i;
-                    }
-                    return mIdx;
-                })
-            };
+        // Apply per-bar colors using backgroundColor arrays
+        sortedDatasets.forEach(function(ds) {
+            ds.backgroundColor = sortedCats.map(function(cat, i) {
+                return ds._colorMap[i] || 'rgba(0,0,0,0.1)';
+            });
+            ds.borderColor = ds.backgroundColor;
+            ds.label = '';
         });
 
-        // Sort datasets by their AVERAGE rank across
-        // disciplines so lower-scoring models render first
-        // (Chart.js renders datasets in array order —
-        //  first dataset = top bar in each group)
-        datasets.sort(function(a, b) {
-            var avgA = a._sortRanks.reduce(
-                function(s,v){return s+v;},0) / a._sortRanks.length;
-            var avgB = b._sortRanks.reduce(
-                function(s,v){return s+v;},0) / b._sortRanks.length;
-            return avgA - avgB;
-        });
+        datasets = sortedDatasets;
     }
 
     // x-axis range
@@ -1083,7 +1073,7 @@ function renderBarChart(models, sorted) {
             animation: { duration: 300 },
             plugins: {
                 legend: {
-                    display: true,
+                    display: !sorted,
                     position: 'bottom',
                     labels: {
                         color: textColor,
@@ -1156,16 +1146,34 @@ function renderBarChart(models, sorted) {
         }]
     });
 
-    // Caption: warn about non-zero axis start
-    // (legend is now the real Chart.js legend, always visible)
+    // When sorted, add a manual legend below
     var caption = document.getElementById('bar-caption');
     if (caption) {
-        var minPct = minVal.toFixed(0);
-        caption.innerHTML = minVal > 0
-            ? 'Mean accuracy per discipline. '
-            + '<strong>X-axis starts at '
-            + minPct + '%, not 0%.</strong>'
-            : 'Mean accuracy per discipline.';
+        if (sorted) {
+            var legendHtml = '<div style="text-align:center;'
+                + 'margin-top:8px;font-size:12px">';
+            models.forEach(function(m, idx) {
+                var color = CHART_COLORS[
+                    chartModels.indexOf(m) % CHART_COLORS.length
+                ];
+                legendHtml += '<span style="display:inline-flex;'
+                    + 'align-items:center;margin:0 8px">'
+                    + '<span style="width:12px;height:12px;'
+                    + 'background:' + color + ';display:inline-block;'
+                    + 'border-radius:2px;margin-right:4px"></span>'
+                    + '<span style="color:' + textColor + '">'
+                    + m.name + '</span></span>';
+            });
+            legendHtml += '</div>';
+            caption.innerHTML = legendHtml;
+        } else {
+            var minPct = minVal.toFixed(0);
+            caption.innerHTML = minVal > 0
+                ? 'Mean accuracy per discipline. '
+                + '<strong>X-axis starts at '
+                + minPct + '%, not 0%.</strong>'
+                : 'Mean accuracy per discipline.';
+        }
     }
 }
 </script>
