@@ -825,37 +825,128 @@ function drawCharts(data) {
     }, { responsive: true });
 
     // ── Horizontal Bar ─────────────────────────────────────────────────────
-    // Auto-tighten x-axis: floor min score to nearest 0.05 then subtract 0.05
+    // One trace per model per discipline, sorted by score within each discipline.
+    // Lowest score = top bar, highest score = bottom bar.
+    // Legend order is fixed via legendrank (never changes).
     const allScores = chartModels.flatMap(m => cats.map(c => getCatAvg(m, c))).filter(v => v !== null);
     const minScore  = allScores.length ? Math.max(0, Math.floor((Math.min(...allScores) - 0.05) * 20) / 20) : 0;
 
-    // Bar traces: reversed so Plotly renders row 1 at top, row 2 below, etc.
-    // Plotly draws grouped horizontal bars bottom-to-top, so we reverse trace order.
-    // legendrank preserves correct legend order (row 1 first in legend).
-    const barTraces = [...chartModels].reverse().map((m) => {
-        const origIdx = chartModels.indexOf(m);
-        const xVals = cats.map(c => getCatAvg(m, c));
+    // Build one trace per model, but with y/x values ordered per discipline sort.
+    // Strategy: for each discipline, rank models by score ascending.
+    // Use offsetgroup per discipline+rank so Plotly stacks them correctly.
+    // Simpler correct approach: one trace per model, use base + offset trick.
+    //
+    // ACTUAL correct approach for per-group sorting in Plotly:
+    // Render each bar as its own trace with a unique y-axis position.
+    // Group disciplines, within each discipline sort models by score ascending.
+    // Plotly will render in the order y-labels appear in categoryarray.
+
+    // Step 1: sort disciplines by mean score descending (lowest disc at top)
+    const discMeans = cats.map(function(c) {
+        const vals = chartModels.map(m => getCatAvg(m, c)).filter(v => v !== null);
+        return { cat: c, mean: vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0 };
+    });
+    discMeans.sort((a, b) => b.mean - a.mean);
+
+    // Step 2: for each discipline, sort models by score ascending
+    // Build flat y-label list: "Discipline__rank" so each bar is unique
+    // But display only discipline name on y-axis (ticktext trick)
+    const yKeys = [];      // internal keys like "Science__0"
+    const yDisplay = [];   // what user sees: "Science" or ""
+    const xValsFlat = [];
+    const colorsFlat = [];
+    const textsFlat = [];
+    const hoversFlat = [];
+
+    discMeans.forEach(function(d) {
+        const cat = d.cat;
+        // Score each model in this discipline
+        const scored = chartModels.map(function(m, idx) {
+            return { m: m, idx: idx, score: getCatAvg(m, cat) };
+        });
+        // Sort ascending by score (lowest first = top bar)
+        scored.sort(function(a, b) {
+            if (a.score === null && b.score === null) return 0;
+            if (a.score === null) return -1;
+            if (b.score === null) return 1;
+            return a.score - b.score;
+        });
+        scored.forEach(function(item, rank) {
+            const key = cat + '__' + rank;
+            yKeys.push(key);
+            // Show discipline name only on first bar of each group
+            yDisplay.push(rank === 0 ? cat : '');
+            xValsFlat.push(item.score);
+            colorsFlat.push(CHART_COLORS[item.idx % CHART_COLORS.length]);
+            textsFlat.push(item.score !== null ? (item.score * 100).toFixed(1) + '%' : '');
+            hoversFlat.push(item.m.name);
+        });
+    });
+
+    // Plotly renders categoryarray bottom→top so reverse for correct display
+    const yKeysRev   = yKeys.slice().reverse();
+    const xRev       = xValsFlat.slice().reverse();
+    const colRev     = colorsFlat.slice().reverse();
+    const textRev    = textsFlat.slice().reverse();
+    const hoverRev   = hoversFlat.slice().reverse();
+    const yDispRev   = yDisplay.slice().reverse();
+
+    // Single data trace (all bars same trace, different colors)
+    const mainTrace = {
+        y: yKeysRev,
+        x: xRev,
+        type: 'bar',
+        orientation: 'h',
+        marker: { color: colRev },
+        text: textRev,
+        textposition: 'outside',
+        textfont: { size: 13, color: colRev, family: 'Arial' },
+        cliponaxis: false,
+        customdata: hoverRev,
+        hovertemplate: '<b>%{customdata}</b><br>%{x:.1%}<extra></extra>',
+        showlegend: false
+    };
+
+    // Legend traces — invisible bars, fixed order by chartModels index
+    // legendrank ensures legend order never changes
+    const legendTraces = chartModels.map(function(m, idx) {
         return {
-            y: cats,
-            x: xVals,
-            type: 'bar',
-            orientation: 'h',
+            y: [null], x: [null],
+            type: 'bar', orientation: 'h',
             name: m.name,
-            legendrank: origIdx + 1,
-            marker: { color: CHART_COLORS[origIdx % CHART_COLORS.length] },
-            text: xVals.map(v => v !== null ? (v * 100).toFixed(1) + '%' : ''),
-            textposition: 'outside',
-            textfont: { size: 13, color: CHART_COLORS[origIdx % CHART_COLORS.length], family: 'Arial' },
-            cliponaxis: false,
-            hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>' + m.name + '</extra>'
+            legendrank: idx + 1,
+            marker: { color: CHART_COLORS[idx % CHART_COLORS.length] },
+            showlegend: true,
+            hoverinfo: 'skip'
         };
     });
 
-    Plotly.react('bar-chart', barTraces, {
+    // Build tick labels: show discipline name at midpoint of its group
+    const numModels = chartModels.length;
+    const tickVals = [];
+    const tickText = [];
+    discMeans.forEach(function(d, di) {
+        const midRank = Math.floor(numModels / 2);
+        const midKey = d.cat + '__' + midRank;
+        tickVals.push(midKey);
+        tickText.push(d.cat);
+    });
+    // Reverse because we reversed the arrays
+    tickVals.reverse();
+    tickText.reverse();
+
+    Plotly.react('bar-chart', [mainTrace].concat(legendTraces), {
         title: { text: 'Mean Accuracy per Discipline', font: { size: 15 } },
         barmode: 'group',
         xaxis: { range: [minScore, 1], tickformat: ',.0%', title: 'Mean Accuracy', automargin: true },
-        yaxis: { automargin: true, categoryorder: 'array', categoryarray: [...cats].reverse() },
+        yaxis: {
+            automargin: true,
+            categoryorder: 'array',
+            categoryarray: yKeysRev,
+            tickmode: 'array',
+            tickvals: tickVals,
+            ticktext: tickText
+        },
         legend: { orientation: 'h', y: -0.22, x: 0.5, xanchor: 'center', traceorder: 'normal' },
         margin: { t: 60, b: 60, l: 140, r: 20 },
         responsive: true
