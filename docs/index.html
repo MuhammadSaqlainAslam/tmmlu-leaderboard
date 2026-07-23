@@ -829,79 +829,33 @@ function drawCharts(data) {
     const allScores = chartModels.flatMap(m => cats.map(c => getCatAvg(m, c))).filter(v => v !== null);
     const minScore  = allScores.length ? Math.max(0, Math.floor((Math.min(...allScores) - 0.05) * 20) / 20) : 0;
 
-    // One trace per model — keeps legend click-to-filter working.
-    // Sort traces by score in EACH discipline independently:
-    // build traces sorted ascending by their score in each cat,
-    // but since Plotly grouped bars render ALL traces in same order per group,
-    // we use a different y-axis key per discipline+rank position.
-    // Each discipline gets N sub-rows (one per model), sorted by score.
-    // Legend uses separate invisible traces with fixed legendrank.
-
-    // Sort disciplines: lowest mean at top (descending categoryarray)
-    const discMeans = cats.map(c => {
-        const vals = chartModels.map(m => getCatAvg(m, c)).filter(v => v !== null);
-        return { cat: c, mean: vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0 };
-    });
-    discMeans.sort((a, b) => b.mean - a.mean); // descending → lowest at top
-
-    // Build y-keys: "Cat||rank" per discipline, sorted by score ascending
-    const yOrder = []; // final categoryarray (will be reversed for Plotly)
-    const modelAtKey = {}; // key → {model, origIdx}
-
-    discMeans.forEach(d => {
-        const scored = chartModels.map((m, idx) => ({
-            m, idx, score: getCatAvg(m, d.cat) ?? -1
-        }));
-        scored.sort((a, b) => a.score - b.score); // ascending: lowest first
-        scored.forEach((item, rank) => {
-            const key = d.cat + '||' + rank;
-            yOrder.push(key);
-            modelAtKey[key] = { m: item.m, idx: item.idx, score: item.score, cat: d.cat };
-        });
-    });
-
-    // Build one trace per original model index (keeps legend click working)
-    // Each trace only has values for keys where that model appears
-    const barTraces = chartModels.map((m, origIdx) => {
-        const color = CHART_COLORS[origIdx % CHART_COLORS.length];
-        const xVals = yOrder.map(key => {
-            const entry = modelAtKey[key];
-            return (entry && entry.idx === origIdx) ? entry.score : null;
-        });
-        const textVals = xVals.map(v => v !== null && v >= 0 ? (v * 100).toFixed(1) + '%' : '');
+    // Bar traces: reversed so Plotly renders row 1 at top, row 2 below, etc.
+    // Plotly draws grouped horizontal bars bottom-to-top, so we reverse trace order.
+    // legendrank preserves correct legend order (row 1 first in legend).
+    const barTraces = [...chartModels].reverse().map((m) => {
+        const origIdx = chartModels.indexOf(m);
+        const xVals = cats.map(c => getCatAvg(m, c));
         return {
-            y: yOrder,
+            y: cats,
             x: xVals,
             type: 'bar',
             orientation: 'h',
             name: m.name,
             legendrank: origIdx + 1,
-            marker: { color },
-            text: textVals,
+            marker: { color: CHART_COLORS[origIdx % CHART_COLORS.length] },
+            text: xVals.map(v => v !== null ? (v * 100).toFixed(1) + '%' : ''),
             textposition: 'outside',
-            textfont: { size: 13, color, family: 'Arial' },
+            textfont: { size: 13, color: CHART_COLORS[origIdx % CHART_COLORS.length], family: 'Arial' },
             cliponaxis: false,
-            hovertemplate: '<b>' + m.name + '</b><br>%{x:.1%}<extra></extra>'
+            hovertemplate: '<b>%{y}</b><br>%{x:.1%}<extra>' + m.name + '</extra>'
         };
     });
-
-    // Build tick labels: show discipline name at middle rank position
-    const nM = chartModels.length;
-    const tickVals = discMeans.map(d => d.cat + '||' + Math.floor(nM / 2));
-    const tickText = discMeans.map(d => d.cat);
 
     Plotly.react('bar-chart', barTraces, {
         title: { text: 'Mean Accuracy per Discipline', font: { size: 15 } },
         barmode: 'group',
         xaxis: { range: [minScore, 1], tickformat: ',.0%', title: 'Mean Accuracy', automargin: true },
-        yaxis: {
-            automargin: true,
-            categoryorder: 'array',
-            categoryarray: [...yOrder].reverse(),
-            tickmode: 'array',
-            tickvals: tickVals,
-            ticktext: tickText
-        },
+        yaxis: { automargin: true, categoryorder: 'array', categoryarray: [...cats].reverse() },
         legend: { orientation: 'h', y: -0.22, x: 0.5, xanchor: 'center', traceorder: 'normal' },
         margin: { t: 60, b: 60, l: 140, r: 20 },
         responsive: true
