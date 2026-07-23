@@ -5,7 +5,160 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HHRI-AI LLM EvalBoard — Comprehensive LLM Benchmark Leaderboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js">
+// ── Bar sort toggle ──────────────────────────────────────────────────────────
+let barSortActive = false;
+
+function toggleBarSort() {
+    barSortActive = !barSortActive;
+    const btn = document.getElementById('sort-bars-btn');
+    if (btn) {
+        btn.style.background     = barSortActive ? 'var(--primary)'      : 'transparent';
+        btn.style.color          = barSortActive ? '#fff'                 : 'var(--text-muted)';
+        btn.style.borderColor    = barSortActive ? 'var(--primary)'       : 'var(--border-color)';
+        btn.textContent          = barSortActive ? 'Sorted by score ✓ 🔃' : 'Sort bars by score 🔃';
+    }
+    redrawBarChart();
+}
+
+function redrawBarChart() {
+    // Get currently visible models from Plotly legend state
+    const barDiv = document.getElementById('bar-chart');
+    if (!barDiv || !barDiv.data) return;
+
+    // chartModels is the global array used when chart was drawn
+    // Find which traces are currently visible
+    const visibleModels = [];
+    barDiv.data.forEach(function(trace, i) {
+        if (trace.visible !== false && trace.visible !== 'legendonly') {
+            // find matching model in chartModels
+            const m = chartModels.find(cm => cm.name === trace.name);
+            if (m) visibleModels.push({ m: m, origIdx: i });
+        }
+    });
+
+    if (!visibleModels.length) return;
+
+    const cats = Object.keys(DISCIPLINE_MAP);
+
+    // Sort disciplines by mean across visible models descending (lowest at top)
+    const discMeans = cats.map(function(c) {
+        const vals = visibleModels.map(function(item) {
+            return getCatAvg(item.m, c);
+        }).filter(function(v) { return v !== null; });
+        return {
+            cat: c,
+            mean: vals.length ? vals.reduce(function(a,b){return a+b;},0)/vals.length : 0
+        };
+    });
+    discMeans.sort(function(a,b) { return b.mean - a.mean; });
+
+    let sortedCats;
+    if (barSortActive) {
+        // Already correctly ordered by discipline mean
+        sortedCats = discMeans.map(function(d) { return d.cat; });
+    } else {
+        sortedCats = discMeans.map(function(d) { return d.cat; });
+    }
+
+    if (barSortActive) {
+        // Build new traces sorted by score within each discipline
+        // Each visible model gets one trace, y values ordered by discipline
+        // Build y keys: "cat||rank" sorted by score ascending per discipline
+        const yOrder = [];
+        const modelAtKey = {};
+
+        discMeans.forEach(function(d) {
+            const scored = visibleModels.map(function(item) {
+                return { item: item, score: getCatAvg(item.m, d.cat) };
+            });
+            scored.sort(function(a,b) {
+                if (a.score === null) return -1;
+                if (b.score === null) return 1;
+                return a.score - b.score; // ascending: lowest first = top
+            });
+            scored.forEach(function(s, rank) {
+                const key = d.cat + '||' + rank;
+                yOrder.push(key);
+                modelAtKey[key] = { item: s.item, score: s.score };
+            });
+        });
+
+        // One trace per original model (keeps Plotly legend state)
+        const newTraces = chartModels.map(function(m, origIdx) {
+            const color = CHART_COLORS[origIdx % CHART_COLORS.length];
+            // Check if this model is visible
+            const visItem = visibleModels.find(function(vi) {
+                return vi.m.name === m.name;
+            });
+            const xVals = yOrder.map(function(key) {
+                const entry = modelAtKey[key];
+                if (!entry) return null;
+                if (entry.item.m.name !== m.name) return null;
+                return entry.score !== null ? entry.score : null;
+            });
+            const textVals = xVals.map(function(v) {
+                return (v !== null && v >= 0) ? (v * 100).toFixed(1) + '%' : '';
+            });
+            return {
+                y: yOrder,
+                x: xVals,
+                type: 'bar',
+                orientation: 'h',
+                name: m.name,
+                legendrank: origIdx + 1,
+                visible: visItem ? true : 'legendonly',
+                marker: { color: color },
+                text: textVals,
+                textposition: 'outside',
+                textfont: { size: 13, color: color, family: 'Arial' },
+                cliponaxis: false,
+                hovertemplate: '<b>' + m.name + '</b><br>%{x:.1%}<extra></extra>'
+            };
+        });
+
+        // Tick labels: show discipline name at middle rank
+        const nV = visibleModels.length;
+        const tickVals = discMeans.map(function(d) {
+            return d.cat + '||' + Math.floor(nV / 2);
+        });
+        const tickText = discMeans.map(function(d) { return d.cat; });
+
+        // x-axis range
+        const allScores = visibleModels.flatMap(function(item) {
+            return cats.map(function(c) { return getCatAvg(item.m, c); });
+        }).filter(function(v) { return v !== null; });
+        const minScore = allScores.length
+            ? Math.max(0, Math.floor((Math.min.apply(null,allScores)-0.05)*20)/20) : 0;
+
+        Plotly.react('bar-chart', newTraces, {
+            title: { text: 'Mean Accuracy per Discipline', font: { size: 15 } },
+            barmode: 'group',
+            xaxis: { range:[minScore,1], tickformat:',.0%',
+                     title:'Mean Accuracy', automargin:true },
+            yaxis: {
+                automargin: true,
+                categoryorder: 'array',
+                categoryarray: [...yOrder].reverse(),
+                tickmode: 'array',
+                tickvals: tickVals,
+                ticktext: tickText
+            },
+            legend: { orientation:'h', y:-0.22, x:0.5,
+                      xanchor:'center', traceorder:'normal' },
+            margin: { t:60, b:60, l:140, r:20 },
+            responsive: true
+        }, { responsive: true });
+
+    } else {
+        // Restore original order — just re-call drawCharts with current data
+        if (typeof globalData !== 'undefined') {
+            drawCharts(globalData);
+        }
+    }
+}
+
+</script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
         /* ── Theme tokens ───────────────────────────────────────── */
@@ -453,7 +606,19 @@
                     <p class="chart-caption">Each axis is a discipline. A model's polygon extends outward as performance improves. Scores are mean accuracy across all subjects in that discipline. Showing top 5 models by current sort.</p>
                 </div>
                 <div class="col-lg-6">
-                    <div class="chart-container shadow-sm"><div id="bar-chart"></div></div>
+                    <div class="chart-container shadow-sm">
+                    <div style="text-align:right;padding:6px 10px 0">
+                        <button id="sort-bars-btn" onclick="toggleBarSort()"
+                            style="font-size:12px;padding:4px 12px;
+                            border-radius:99px;border:1.5px solid var(--border-color);
+                            background:transparent;color:var(--text-muted);
+                            cursor:pointer;transition:all .2s"
+                            title="Sort bars by score within each discipline">
+                            Sort bars by score 🔃
+                        </button>
+                    </div>
+                    <div id="bar-chart"></div>
+                </div>
                     <p class="chart-caption" id="bar-caption">Horizontal bars show mean accuracy per discipline for the top 5 models.</p>
                 </div>
             </div>
@@ -520,6 +685,7 @@ const METADATA_METRICS = ['total_samples', 'correct_samples', 'total', 'evaluate
 
 let globalModels = [];
 let rawDataRows = [];
+let globalData = null;
 let currentSort = 'overall';
 let currentSortDir = 'desc';
 
