@@ -533,6 +533,7 @@ const METADATA_METRICS = ['total_samples', 'correct_samples', 'total', 'evaluate
 let globalModels = [];
 let rawDataRows = [];
 let globalData = null;
+let chartModels = [];
 let currentSort = 'overall';
 let currentSortDir = 'desc';
 
@@ -811,7 +812,7 @@ function drawCharts(data) {
         'gpt-oss-20b',
     ];
     const dataMap = Object.fromEntries(data.map(m => [m.name, m]));
-    const chartModels = CHART_MODEL_ORDER
+    chartModels = CHART_MODEL_ORDER
         .filter(name => dataMap[name])
         .map(name => dataMap[name])
         .slice(0, 6);
