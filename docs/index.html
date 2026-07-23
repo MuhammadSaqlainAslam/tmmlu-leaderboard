@@ -939,164 +939,93 @@ function initSearchMeta() {
         `Showing all <strong>${globalModels.length}</strong> models &nbsp;<span class="search-hint">Press <kbd>/</kbd> to search</span>`;
 }
 
-// ── Bar sort toggle ──────────────────────────────────────────────────────────
+// -- Bar sort toggle
 let barSortActive = false;
 
 function toggleBarSort() {
     barSortActive = !barSortActive;
-    const btn = document.getElementById('sort-bars-btn');
+    var btn = document.getElementById('sort-bars-btn');
     if (btn) {
-        btn.style.background     = barSortActive ? 'var(--primary)'      : 'transparent';
-        btn.style.color          = barSortActive ? '#fff'                 : 'var(--text-muted)';
-        btn.style.borderColor    = barSortActive ? 'var(--primary)'       : 'var(--border-color)';
-        btn.textContent          = barSortActive ? 'Sorted by score ✓ 🔃' : 'Sort bars by score 🔃';
+        btn.style.background  = barSortActive ? 'var(--primary)' : 'transparent';
+        btn.style.color       = barSortActive ? '#fff' : 'var(--text-muted)';
+        btn.style.borderColor = barSortActive ? 'var(--primary)' : 'var(--border-color)';
+        btn.textContent       = barSortActive ? 'Sorted by score ✓' : 'Sort bars by score';
     }
     redrawBarChart();
 }
 
 function redrawBarChart() {
-    // Get currently visible models from Plotly legend state
-    const barDiv = document.getElementById('bar-chart');
-    if (!barDiv || !barDiv.data) return;
-
-    // chartModels is the global array used when chart was drawn
-    // Find which traces are currently visible
-    const visibleModels = [];
-    barDiv.data.forEach(function(trace, i) {
-        if (trace.visible !== false && trace.visible !== 'legendonly') {
-            // find matching model in chartModels
-            const m = chartModels.find(cm => cm.name === trace.name);
-            if (m) visibleModels.push({ m: m, origIdx: i });
-        }
+    var barDiv = document.getElementById('bar-chart');
+    if (!barDiv || !barDiv.data || !chartModels || !chartModels.length) return;
+    var cats = Object.keys(DISCIPLINE_MAP);
+    var visMap = {};
+    barDiv.data.forEach(function(t) {
+        visMap[t.name] = (t.visible !== false && t.visible !== 'legendonly');
     });
-
-    if (!visibleModels.length) return;
-
-    const cats = Object.keys(DISCIPLINE_MAP);
-
-    // Sort disciplines by mean across visible models descending (lowest at top)
-    const discMeans = cats.map(function(c) {
-        const vals = visibleModels.map(function(item) {
-            return getCatAvg(item.m, c);
-        }).filter(function(v) { return v !== null; });
-        return {
-            cat: c,
-            mean: vals.length ? vals.reduce(function(a,b){return a+b;},0)/vals.length : 0
-        };
+    if (!barSortActive) {
+        if (globalData) {
+            drawCharts(globalData);
+            setTimeout(function() {
+                var d = document.getElementById('bar-chart');
+                if (!d || !d.data) return;
+                Plotly.restyle('bar-chart', {
+                    visible: d.data.map(function(t) { return visMap[t.name] ? true : 'legendonly'; })
+                });
+            }, 150);
+        }
+        return;
+    }
+    var visMods = chartModels.filter(function(m) { return visMap[m.name] !== false; });
+    if (!visMods.length) return;
+    var nV = visMods.length;
+    var discMeans = cats.map(function(c) {
+        var vals = visMods.map(function(m) { return getCatAvg(m,c); }).filter(function(v) { return v !== null; });
+        return { cat:c, mean: vals.length ? vals.reduce(function(a,b){return a+b;},0)/vals.length : 0 };
     });
     discMeans.sort(function(a,b) { return b.mean - a.mean; });
-
-    let sortedCats;
-    if (barSortActive) {
-        // Already correctly ordered by discipline mean
-        sortedCats = discMeans.map(function(d) { return d.cat; });
-    } else {
-        sortedCats = discMeans.map(function(d) { return d.cat; });
-    }
-
-    if (barSortActive) {
-        // Build new traces sorted by score within each discipline
-        // Each visible model gets one trace, y values ordered by discipline
-        // Build y keys: "cat||rank" sorted by score ascending per discipline
-        const yOrder = [];
-        const modelAtKey = {};
-
-        discMeans.forEach(function(d) {
-            const scored = visibleModels.map(function(item) {
-                return { item: item, score: getCatAvg(item.m, d.cat) };
-            });
-            scored.sort(function(a,b) {
-                if (a.score === null) return -1;
-                if (b.score === null) return 1;
-                return a.score - b.score; // ascending: lowest first = top
-            });
-            scored.forEach(function(s, rank) {
-                const key = d.cat + '||' + rank;
-                yOrder.push(key);
-                modelAtKey[key] = { item: s.item, score: s.score };
-            });
+    var yOrder=[], keyMod={}, keySc={};
+    discMeans.forEach(function(d) {
+        var sc = visMods.map(function(m) { return {m:m, s:getCatAvg(m,d.cat)}; });
+        sc.sort(function(a,b) { return (a.s===null)?-1:(b.s===null)?1:a.s-b.s; });
+        sc.forEach(function(item,rank) {
+            var k=d.cat+'||'+rank; yOrder.push(k); keyMod[k]=item.m.name; keySc[k]=item.s;
         });
-
-        // One trace per original model (keeps Plotly legend state)
-        const newTraces = chartModels.map(function(m, origIdx) {
-            const color = CHART_COLORS[origIdx % CHART_COLORS.length];
-            // Check if this model is visible
-            const visItem = visibleModels.find(function(vi) {
-                return vi.m.name === m.name;
-            });
-            const xVals = yOrder.map(function(key) {
-                const entry = modelAtKey[key];
-                if (!entry) return null;
-                if (entry.item.m.name !== m.name) return null;
-                return entry.score !== null ? entry.score : null;
-            });
-            const textVals = xVals.map(function(v) {
-                return (v !== null && v >= 0) ? (v * 100).toFixed(1) + '%' : '';
-            });
-            return {
-                y: yOrder,
-                x: xVals,
-                type: 'bar',
-                orientation: 'h',
-                name: m.name,
-                legendrank: origIdx + 1,
-                visible: visItem ? true : 'legendonly',
-                marker: { color: color },
-                text: textVals,
-                textposition: 'outside',
-                textfont: { size: 13, color: color, family: 'Arial' },
-                cliponaxis: false,
-                hovertemplate: '<b>' + m.name + '</b><br>%{x:.1%}<extra></extra>'
-            };
-        });
-
-        // Tick labels: show discipline name at middle rank
-        const nV = visibleModels.length;
-        const tickVals = discMeans.map(function(d) {
-            return d.cat + '||' + Math.floor(nV / 2);
-        });
-        const tickText = discMeans.map(function(d) { return d.cat; });
-
-        // x-axis range
-        const allScores = visibleModels.flatMap(function(item) {
-            return cats.map(function(c) { return getCatAvg(item.m, c); });
-        }).filter(function(v) { return v !== null; });
-        const minScore = allScores.length
-            ? Math.max(0, Math.floor((Math.min.apply(null,allScores)-0.05)*20)/20) : 0;
-
-        // Set bar width based on number of visible models
-        var barW = nV <= 3 ? 0.6 : nV <= 4 ? 0.5 : 0.4;
-        newTraces.forEach(function(t) {
-            if (t.visible !== 'legendonly') t.width = barW;
-        });
-
-        Plotly.react('bar-chart', newTraces, {
-            title: { text: 'Mean Accuracy per Discipline', font: { size: 15 } },
-            barmode: 'overlay',
-            xaxis: { range:[minScore,1], tickformat:',.0%',
-                     title:'Mean Accuracy', automargin:true },
-            yaxis: {
-                automargin: true,
-                categoryorder: 'array',
-                categoryarray: [...yOrder].reverse(),
-                tickmode: 'array',
-                tickvals: tickVals,
-                ticktext: tickText
-            },
-            legend: { orientation:'h', y:-0.22, x:0.5,
-                      xanchor:'center', traceorder:'normal' },
-            margin: { t:60, b:60, l:140, r:20 },
-            bargap: 0.3,
-            height: Math.max(300, nV * discMeans.length * 28 + 160),
-            responsive: true
-        }, { responsive: true });
-
-    } else {
-        // Restore original order — just re-call drawCharts with current data
-        if (typeof globalData !== 'undefined') {
-            drawCharts(globalData);
-        }
-    }
+    });
+    var allSc=visMods.flatMap(function(m){return cats.map(function(c){return getCatAvg(m,c);});}).filter(function(v){return v!==null;});
+    var minSc=allSc.length?Math.max(0,Math.floor((Math.min.apply(null,allSc)-0.05)*20)/20):0;
+    var barW=nV<=2?0.55:nV<=3?0.45:nV<=4?0.35:0.28;
+    var traces=chartModels.map(function(m,oi) {
+        var color=CHART_COLORS[oi%CHART_COLORS.length];
+        var vis=visMap[m.name]!==false;
+        var xVals=yOrder.map(function(k){return keyMod[k]===m.name?keySc[k]:null;});
+        var txts=xVals.map(function(v){return (v!==null&&v>=0)?(v*100).toFixed(1)+'%':'';});
+        return {
+            y:yOrder,x:xVals,type:'bar',orientation:'h',
+            name:m.name,legendrank:oi+1,
+            visible:vis?true:'legendonly',width:vis?barW:0,
+            marker:{color:color},text:txts,textposition:'outside',
+            textfont:{size:12,color:color,family:'Arial'},
+            cliponaxis:false,
+            hovertemplate:'<b>'+m.name+'</b><br>%{x:.1%}<extra></extra>'
+        };
+    });
+    var mid=Math.floor(nV/2);
+    Plotly.react('bar-chart',traces,{
+        title:{text:'Mean Accuracy per Discipline',font:{size:15}},
+        barmode:'overlay',
+        xaxis:{range:[minSc,1],tickformat:',.0%',title:'Mean Accuracy',automargin:true},
+        yaxis:{
+            automargin:true,categoryorder:'array',
+            categoryarray:[...yOrder].reverse(),
+            tickmode:'array',
+            tickvals:discMeans.map(function(d){return d.cat+'||'+mid;}),
+            ticktext:discMeans.map(function(d){return d.cat;})
+        },
+        legend:{orientation:'h',y:-0.22,x:0.5,xanchor:'center',traceorder:'normal'},
+        margin:{t:60,b:60,l:140,r:20},
+        height:Math.max(280,nV*discMeans.length*30+140),
+        responsive:true
+    },{responsive:true});
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
