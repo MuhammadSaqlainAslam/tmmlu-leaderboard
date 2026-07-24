@@ -934,7 +934,7 @@ function drawCharts(data) {
         legend: { orientation: 'h', y: -0.30, x: 0.5, xanchor: 'center', traceorder: 'normal', font: { size: 11 } },
         margin: { t: 60, b: 100, l: 140, r: 80 },
         responsive: true
-    }, { responsive: true, displayModeBar: false });
+    }, { responsive: true, displayModeBar: 'hover' });
 
     // Dynamic caption: warn about non-zero axis start
     const barCaption = document.getElementById('bar-caption');
