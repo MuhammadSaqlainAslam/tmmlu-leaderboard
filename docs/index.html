@@ -395,7 +395,23 @@
         .empty-state { text-align: center; padding: 60px 20px; color: var(--text4); }
         .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
         .empty-state p { font-size: 16px; font-weight: 600; }
-    </style>
+    
+/* ── Model selector chips ─────────────────────── */
+.model-chips-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-top:8px}
+.model-chip{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border-color);background:transparent;cursor:pointer;transition:all .15s;user-select:none}
+.model-chip:hover{border-color:var(--model-color);background:color-mix(in srgb,var(--model-color) 6%,transparent);transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.model-chip.selected{border-color:var(--model-color);background:color-mix(in srgb,var(--model-color) 10%,transparent)}
+.chip-bar{width:4px;height:32px;border-radius:2px;background:var(--model-color);flex-shrink:0}
+.chip-body{flex:1;min-width:0}
+.chip-name{font-size:12px;font-weight:700;color:var(--bs-body-color);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip-sub{font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.chip-check{font-size:13px;color:var(--model-color);font-weight:700;flex-shrink:0;opacity:0;transition:opacity .15s}
+.model-chip.selected .chip-check{opacity:1}
+.model-chips-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.chips-label{font-size:13px;font-weight:600}
+.chips-btn{font-size:11px;padding:3px 10px;border-radius:99px;border:1px solid var(--border-color);background:transparent;color:var(--text-muted);cursor:pointer;transition:all .15s;margin-left:4px}
+.chips-btn:hover{border-color:var(--primary);color:var(--primary)}
+</style>
 </head>
 <body>
 
@@ -489,11 +505,10 @@
                     </div>
                     <div class="flex-grow-1">
                         <label class="small fw-bold text-uppercase text-muted d-block mb-1">Models to Compare</label>
-                        <div id="modelCheckboxes" class="model-chips-grid"></div>
+                        <div class="model-chips-header"><span class="chips-label">Models to Compare</span><div><button class="chips-btn" onclick="selectAllModels(true)">Select All</button><button class="chips-btn" onclick="selectAllModels(false)">Clear All</button></div></div><div id="modelCheckboxes" class="model-chips-grid"></div>
                     </div>
                     <div class="sel-btns">
-                        <button onclick="selectAllModels(true)">Select All</button>
-                        <button onclick="selectAllModels(false)">Clear All</button>
+                        
                     </div>
                 </div>
                 <div class="table-responsive" style="max-height: 850px;">
