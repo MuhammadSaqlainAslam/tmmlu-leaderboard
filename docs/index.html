@@ -489,7 +489,7 @@
                     </div>
                     <div class="flex-grow-1">
                         <label class="small fw-bold text-uppercase text-muted d-block mb-1">Models to Compare</label>
-                        <div id="modelCheckboxes" class="d-flex gap-3 flex-wrap"></div>
+                        <div id="modelCheckboxes" class="model-chips-grid"></div>
                     </div>
                     <div class="sel-btns">
                         <button onclick="selectAllModels(true)">Select All</button>
@@ -716,15 +716,72 @@ function renderLeaderboard(data) {
 function initComparisonFilters() {
     const container = document.getElementById('modelCheckboxes');
     if (container.innerHTML !== '') return;
+
+    // Color map — matches CHART_COLORS order
+    const MODEL_COLORS = [
+        {hex:'#2563eb', rgb:'37,99,235'},   // FoxBrain_v1.2
+        {hex:'#16a34a', rgb:'22,163,74'},    // FoxBrain_v1.5
+        {hex:'#d97706', rgb:'217,119,6'},    // NVIDIA Super
+        {hex:'#dc2626', rgb:'220,38,38'},    // NVIDIA Nano
+        {hex:'#7c3aed', rgb:'124,58,237'},   // gemma-4-31B
+        {hex:'#ea580c', rgb:'234,88,12'},    // gpt-oss-20b
+        {hex:'#0891b2', rgb:'8,145,178'},    // Gemma-3-TAIDE
+        {hex:'#059669', rgb:'5,150,105'},    // Qwen3.6
+        {hex:'#7c3aed', rgb:'124,58,237'},   // Qwen3.5
+    ];
+
+    // Short display names
+    function shortName(name) {
+        if (name.includes('FoxBrain_v1.2')) return {main:'FoxBrain v1.2', sub:'70B · 0630'};
+        if (name.includes('FoxBrain_v1.5')) return {main:'FoxBrain v1.5', sub:'remove_repeat_lora'};
+        if (name.includes('Nemotron-3-Super')) return {main:'Nemotron Super', sub:'120B-A12B-BF16'};
+        if (name.includes('Nemotron-3-Nano')) return {main:'Nemotron Nano', sub:'30B-A3B-BF16'};
+        if (name === 'gemma-4-31B-it') return {main:'Gemma 4 31B', sub:'Instruct'};
+        if (name === 'gpt-oss-20b') return {main:'GPT-OSS 20B', sub:'OpenAI open-weight'};
+        if (name.includes('TAIDE')) return {main:'Gemma-3 TAIDE', sub:'12B · ZH-TW'};
+        if (name.includes('Qwen3.6')) return {main:'Qwen3.6', sub:'35B-A3B'};
+        if (name.includes('Qwen3.5')) return {main:'Qwen3.5', sub:'9B'};
+        return {main:name.substring(0,20), sub:''};
+    }
+
     globalModels.forEach((m, i) => {
         const isSelected = m.name.includes('FoxBrain_v1.5') || m.name === 'gpt-oss-20b';
-        container.innerHTML += `<div class="form-check form-check-inline"><input class="form-check-input model-chk" type="checkbox" id="m${i}" value="${m.name}" ${isSelected ? 'checked' : ''} onchange="renderComparisonTable()"><label class="form-check-label small fw-bold" for="m${i}">${m.name}</label></div>`;
+        const clr = MODEL_COLORS[i % MODEL_COLORS.length];
+        const nm  = shortName(m.name);
+        const chip = document.createElement('div');
+        chip.className = 'model-chip' + (isSelected ? ' selected' : '');
+        chip.style.setProperty('--model-color', clr.hex);
+        chip.style.setProperty('--model-color-rgb', clr.rgb);
+        chip.dataset.model = m.name;
+        chip.innerHTML = [
+            '<div class="chip-bar"></div>',
+            '<div class="chip-body">',
+              '<div class="chip-name">' + nm.main + '</div>',
+              nm.sub ? '<div class="chip-sub">' + nm.sub + '</div>' : '',
+            '</div>',
+            '<span class="chip-check">✓</span>',
+            '<input type="checkbox" class="model-chk" value="' + m.name + '"',
+              (isSelected ? ' checked' : '') + ' style="display:none">',
+        ].join('');
+        chip.addEventListener('click', function() {
+            const cb = this.querySelector('.model-chk');
+            cb.checked = !cb.checked;
+            this.classList.toggle('selected', cb.checked);
+            renderComparisonTable();
+        });
+        container.appendChild(chip);
     });
     renderComparisonTable();
 }
 
 function selectAllModels(select) {
-    document.querySelectorAll('.model-chk').forEach(c => { c.checked = select; });
+    document.querySelectorAll('.model-chip').forEach(chip => {
+        const cb = chip.querySelector('.model-chk');
+        if (cb) {
+            cb.checked = select;
+            chip.classList.toggle('selected', select);
+        }
+    });
     renderComparisonTable();
 }
 
