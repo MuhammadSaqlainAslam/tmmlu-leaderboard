@@ -762,7 +762,7 @@ function initComparisonFilters() {
     }
 
     globalModels.forEach((m, i) => {
-        const isSelected = m.name.includes('FoxBrain_v1.5') || m.name === 'gpt-oss-20b';
+        const isSelected = m.name.includes('FoxBrain_v1.5') || m.name === 'gpt-oss-20b' || m.name === 'Kimi-K3';
         const clr = MODEL_COLORS[i % MODEL_COLORS.length];
         const nm  = shortName(m.name);
         const chip = document.createElement('div');
