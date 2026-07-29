@@ -757,7 +757,7 @@ function initComparisonFilters() {
         if (name.includes('TAIDE')) return {main:'Gemma-3 TAIDE', sub:'12B · ZH-TW'};
         if (name.includes('Qwen3.6')) return {main:'Qwen3.6', sub:'35B-A3B'};
         if (name.includes('Qwen3.5')) return {main:'Qwen3.5', sub:'9B'};
-        if (name === 'Kimi-K3') return {main:'Kimi K3', sub:'2.8T MoE · Open weight'};
+        if (name === 'Kimi-K3') return {main:'Kimi K3', sub:'2.8T MoE · Open'};
         return {main:name.substring(0,20), sub:''};
     }
 
@@ -853,8 +853,8 @@ function renderComparisonTable() {
 }
 
 // ── Charts ─────────────────────────────────────────────────────────────────
-const CHART_COLORS      = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#ea580c'];
-const CHART_FILL_COLORS = ['rgba(37,99,235,0.12)','rgba(22,163,74,0.12)','rgba(217,119,6,0.12)','rgba(220,38,38,0.12)','rgba(124,58,237,0.12)','rgba(234,88,12,0.12)'];
+const CHART_COLORS      = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#ea580c','#0891b2','#059669','#6366f1','#e91e8c'];
+const CHART_FILL_COLORS = ['rgba(37,99,235,0.12)','rgba(22,163,74,0.12)','rgba(217,119,6,0.12)','rgba(220,38,38,0.12)','rgba(124,58,237,0.12)','rgba(234,88,12,0.12)','rgba(8,145,178,0.12)','rgba(5,150,105,0.12)','rgba(99,102,241,0.12)','rgba(233,30,140,0.12)'];
 
 function getCatAvg(m, cat) {
     if (!m.disciplines[cat]) return null;
