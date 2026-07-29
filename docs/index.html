@@ -876,18 +876,10 @@ function drawCharts(data) {
         'NVIDIA-Nemotron-3-Nano-30B-A3B-BF16',
         'gemma-4-31B-it',
         'gpt-oss-20b',
-        'Gemma-3-TAIDE-12b-Chat-ZH-TW-Prompt',
-        'Qwen3.6-35B-A3B',
-        'Qwen3.5-9B',
         'Kimi-K3',
     ];
     const dataMap = Object.fromEntries(data.map(m => [m.name, m]));
-    // Use chip-selected models if available, else fall back to full order
-    const selectedNames = Array.from(document.querySelectorAll('.model-chk:checked')).map(cb => cb.value);
-    const orderToUse = selectedNames.length > 0
-        ? CHART_MODEL_ORDER.filter(n => selectedNames.includes(n))
-        : CHART_MODEL_ORDER;
-    chartModels = orderToUse
+    chartModels = CHART_MODEL_ORDER
         .filter(name => dataMap[name])
         .map(name => dataMap[name]);
 
