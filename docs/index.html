@@ -743,6 +743,7 @@ function initComparisonFilters() {
         {hex:'#0891b2', rgb:'8,145,178'},    // Gemma-3-TAIDE
         {hex:'#059669', rgb:'5,150,105'},    // Qwen3.6
         {hex:'#7c3aed', rgb:'124,58,237'},   // Qwen3.5
+        {hex:'#e91e8c', rgb:'233,30,140'},   // Kimi-K3
     ];
 
     // Short display names
@@ -756,6 +757,7 @@ function initComparisonFilters() {
         if (name.includes('TAIDE')) return {main:'Gemma-3 TAIDE', sub:'12B · ZH-TW'};
         if (name.includes('Qwen3.6')) return {main:'Qwen3.6', sub:'35B-A3B'};
         if (name.includes('Qwen3.5')) return {main:'Qwen3.5', sub:'9B'};
+        if (name === 'Kimi-K3') return {main:'Kimi K3', sub:'2.8T MoE · Open weight'};
         return {main:name.substring(0,20), sub:''};
     }
 
